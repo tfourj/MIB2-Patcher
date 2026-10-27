@@ -1,0 +1,34 @@
+#---------------------------------------------------------------------
+# MENUSCREEN - a MENU tile that opens a custom screen (prototype)
+# Linked into /eso/hmi/engdefs by "menuscreen.sh gem-on"
+# Needs the M.I.B. SD card in the sda0 slot
+#---------------------------------------------------------------------
+screen   MENUSCREEN Main
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/MENUSCREEN/esd/status.sh"
+   label    "Status and screen log"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/MENUSCREEN/esd/install.sh"
+   label    "Install MENU screen"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/MENUSCREEN/esd/uninstall.sh"
+   label    "Uninstall MENU screen"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/MENUSCREEN/esd/restore.sh"
+   label    "Restore original lsd.sh"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/MENUSCREEN/esd/slot-online.sh"
+   label    "Use the Audi connect tile"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/MENUSCREEN/esd/slot-breakdown.sh"
+   label    "Use the Breakdown call tile"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/MENUSCREEN/esd/slot-off.sh"
+   label    "MENU tile off (stock MENU)"

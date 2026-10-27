@@ -1,0 +1,10 @@
+package de.audi.atip.hmi.modelaccess;
+
+/** Compile-only stub. The real interface lives in lsd.jxe. */
+public interface RangeModelGUI extends HMIModelGUI {
+    int getMinimum();
+
+    int getMaximum();
+
+    int getValue();
+}
