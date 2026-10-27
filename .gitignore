@@ -1,0 +1,9 @@
+build/
+*.log
+__pycache__/
+# Card backups the installers write next to each patch
+backup/
+# Firmware images and dumps stay out of the repo
+*.jxe
+rom.classes
+*.dis

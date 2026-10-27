@@ -1,0 +1,4 @@
+# Scripts run on the MMI (QNX) and must keep LF line endings
+* text=auto eol=lf
+*.jar binary
+*.class binary
