@@ -30,7 +30,7 @@ Each of the three buttons can be set to one of these functions at any time, with
 All other buttons work as before.
 
 > [!WARNING]
-> **Not tested on a car yet.** The patch was built by reverse engineering one unit's firmware (see [FINDINGS.md](FINDINGS.md)).
+> **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > If something is wrong, the MMI screen software may not start (black screen, no GEM).
 > A [boot guard](#safeguards) turns the patch off by itself after one failed start. SSH is still the best way to undo things. Use at your own risk.
 
@@ -195,4 +195,4 @@ Usage is in [TOOLS.md](../TOOLS.md).
 
 > [!NOTE]
 > AI was used to explore the firmware, find the joker and steering wheel button handling, and write the patch, installer and analysis tools.
-> Treat the results like any other untested community patch.
+> Treat the results like any other community patch that has only been tested on one car.

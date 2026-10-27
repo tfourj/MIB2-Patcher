@@ -1,6 +1,6 @@
 # MENUSCREEN
 
-**Prototype.** Adds a tile to the **MENU** screen of an Audi MHI2 MMI that opens a screen with three buttons, packaged as an add-on for the M.I.B. (More Incredible Bash) SD card.
+Adds a tile to the **MENU** screen of an Audi MHI2 MMI that opens a screen with three buttons, packaged as an add-on for the M.I.B. (More Incredible Bash) SD card.
 
 The MMI has no free slot for a new tile, so the patch reuses one that is hidden on European cars:
 
@@ -22,7 +22,7 @@ Turn the knob to choose a button and press it to start; the selection wraps arou
 To see roughly how it will look before installing, open [preview/menuscreen-preview.html](preview/menuscreen-preview.html) in a browser. It also builds the settings file.
 
 > [!WARNING]
-> **Not tested on a car yet.** The patch was built by reverse engineering one unit's firmware (see [FINDINGS.md](FINDINGS.md)).
+> **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > It replaces the class that draws the tiles of the MENU and CAR menus. If something is wrong, those menus may not open.
 > GEM still opens and can uninstall it. A [boot guard](#safeguards) turns the patch off if the MMI restarts within a minute of starting. Have SSH ready. Use at your own risk.
 
@@ -165,4 +165,4 @@ Full analysis: [FINDINGS.md](FINDINGS.md).
 
 > [!NOTE]
 > AI was used to explore the firmware, find the MENU and screen handling, and write the patch, installer and analysis tools.
-> Treat the results like any other untested community patch.
+> Treat the results like any other community patch that has only been tested on one car.
