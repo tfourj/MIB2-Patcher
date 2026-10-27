@@ -25,7 +25,8 @@ VERSION="0.2.0"
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
 
-# Package folder on the SD card (where this script lives), mib2-patcher/patches/<train>/MENUSCREEN
+# Package folder (where this script lives), mib2-patcher/patches/<train>/MENUSCREEN,
+# in /mnt/app/eso on the unit or on the SD card
 PKG=$(dirname "$0")
 case "$PKG" in
 	/*) ;;
@@ -33,10 +34,20 @@ case "$PKG" in
 esac
 SD_ROOT="${PKG%/*/*/*/*}"
 
-LOG="$PKG/menuscreen.log"
+# Logs and the lsd.sh copy go to the folder patcher.sh passes (on /mnt/persist,
+# because /mnt/app is read-only), or next to this script when it runs on its own
+DATA="$PKG"
+if [ -n "$PATCHER_DATA" ]; then
+	DATA="$PATCHER_DATA/MENUSCREEN"
+	mkdir -p "$DATA" 2> /dev/null
+fi
+LOG="$DATA/menuscreen.log"
 
 # GEM scripts see the SD card read-only, the M.I.B. launcher remounts it the same way
-mount -uw "$SD_ROOT" 2> /dev/null
+case "$PKG" in
+	/net/mmx/mnt/app/*) ;;
+	*) mount -uw "$SD_ROOT" 2> /dev/null ;;
+esac
 
 APP_MOUNT="/net/mmx/mnt/app"
 HMI="$APP_MOUNT/eso/hmi"
@@ -62,8 +73,8 @@ DEFAULT_SLOT="online"
 
 # Written by the patched classes on the MMX
 SCREEN_LOG="$PERSIST/menuscreen.log"
-# Copy of the patch log on the SD card, made by status and uninstall
-SCREEN_LOG_COPY="$PKG/menuscreen-unit.log"
+# Copy of the patch log next to the installer log, made by status and uninstall
+SCREEN_LOG_COPY="$DATA/menuscreen-unit.log"
 
 # sha1 of lsd.jxe on MHI2_ER_AU57x_K3663_1 (MU1425), the firmware the patch was built from
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
@@ -335,8 +346,8 @@ do_install() {
 			cp "$LSD_SH" "$LSD_BAK" || die "could not back up lsd.sh, nothing changed"
 			log "lsd.sh backed up to $LSD_BAK"
 		fi
-		mkdir -p "$PKG/backup" 2> /dev/null
-		[ -f "$PKG/backup/lsd.sh" ] || cp "$LSD_SH" "$PKG/backup/lsd.sh" 2> /dev/null
+		mkdir -p "$DATA/backup" 2> /dev/null
+		[ -f "$DATA/backup/lsd.sh" ] || cp "$LSD_SH" "$DATA/backup/lsd.sh" 2> /dev/null
 	fi
 	insert_patch_block || die "could not patch lsd.sh, it was left unchanged"
 	log "lsd.sh patched with boot guard"

@@ -26,7 +26,8 @@ VERSION="1.2.0"
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
 
-# Package folder on the SD card (where this script lives), mib2-patcher/patches/<train>/TEL2ACP
+# Package folder (where this script lives), mib2-patcher/patches/<train>/TEL2ACP,
+# in /mnt/app/eso on the unit or on the SD card
 PKG=$(dirname "$0")
 case "$PKG" in
 	/*) ;;
@@ -34,10 +35,20 @@ case "$PKG" in
 esac
 SD_ROOT="${PKG%/*/*/*/*}"
 
-LOG="$PKG/tel2acp.log"
+# Logs and the lsd.sh copy go to the folder patcher.sh passes (on /mnt/persist,
+# because /mnt/app is read-only), or next to this script when it runs on its own
+DATA="$PKG"
+if [ -n "$PATCHER_DATA" ]; then
+	DATA="$PATCHER_DATA/TEL2ACP"
+	mkdir -p "$DATA" 2> /dev/null
+fi
+LOG="$DATA/tel2acp.log"
 
 # GEM scripts see the SD card read-only, the M.I.B. launcher remounts it the same way
-mount -uw "$SD_ROOT" 2> /dev/null
+case "$PKG" in
+	/net/mmx/mnt/app/*) ;;
+	*) mount -uw "$SD_ROOT" 2> /dev/null ;;
+esac
 
 APP_MOUNT="/net/mmx/mnt/app"
 HMI="$APP_MOUNT/eso/hmi"
@@ -328,10 +339,14 @@ mark_esd() {
 }
 
 refresh_marks() {
+	mount_rw
 	{
 		mark_esd "$ESD_SRC" mode "$(current_mode)" &&
 		mark_esd "$ESD_CUSTOM_SRC" custom "$(current_custom)"
-	} 2> /dev/null || { log "WARNING: could not update the [x] marks in the GEM screens"; return; }
+	} 2> /dev/null
+	rc=$?
+	mount_ro
+	[ $rc = 0 ] || { log "WARNING: could not update the [x] marks in the GEM screens"; return; }
 	log "GEM [x] marks updated, GEM may only show them after an MMI reboot"
 }
 
@@ -366,8 +381,8 @@ do_install() {
 			cp "$LSD_SH" "$LSD_BAK" || die "could not back up lsd.sh, nothing changed"
 			log "lsd.sh backed up to $LSD_BAK"
 		fi
-		mkdir -p "$PKG/backup" 2> /dev/null
-		[ -f "$PKG/backup/lsd.sh" ] || cp "$LSD_SH" "$PKG/backup/lsd.sh" 2> /dev/null
+		mkdir -p "$DATA/backup" 2> /dev/null
+		[ -f "$DATA/backup/lsd.sh" ] || cp "$LSD_SH" "$DATA/backup/lsd.sh" 2> /dev/null
 	fi
 	insert_patch_block || die "could not patch lsd.sh, it was left unchanged"
 	log "lsd.sh patched with boot guard"
