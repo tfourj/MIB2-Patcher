@@ -5,32 +5,32 @@
 # [x] marks the selected mode, tel2acp.sh rewrites them
 # The Set_CarPlay_Custom submenu is in TEL2ACP_custom.esd
 #---------------------------------------------------------------------
-screen   TEL2ACP Main
+screen   TEL2ACP MIB2_Patcher
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/status.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/status.sh"
    label    "Status"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/mode-tel.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/mode-tel.sh"
    label    "[x] Mode: TEL / CarPlay"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/mode-carplay.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/mode-carplay.sh"
    label    "[ ] Mode: CarPlay only"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/mode-custom.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/mode-custom.sh"
    label    "[ ] Mode: CarPlay / CarPlay Custom"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/install.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/install.sh"
    label    "Install TEL -> CarPlay"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/uninstall.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/uninstall.sh"
    label    "Uninstall TEL -> CarPlay"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/restore.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/restore.sh"
    label    "Restore original lsd.sh"

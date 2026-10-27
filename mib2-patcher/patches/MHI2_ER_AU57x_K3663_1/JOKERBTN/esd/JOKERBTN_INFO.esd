@@ -6,37 +6,37 @@
 screen   INFO_button JOKERBTN
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/set/info-stock.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/info-stock.sh"
    label    "Stock"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/set/info-prev.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/info-prev.sh"
    label    "Previous track"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/set/info-next.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/info-next.sh"
    label    "Next track"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/set/info-mute.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/info-mute.sh"
    label    "Mute"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/set/info-radio.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/info-radio.sh"
    label    "Radio"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/set/info-media.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/info-media.sh"
    label    "Media"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/set/info-phone.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/info-phone.sh"
    label    "Phone (TEL key)"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/set/info-nav.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/info-nav.sh"
    label    "Navigation (NAV key)"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/set/info-menu.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/info-menu.sh"
    label    "MENU"

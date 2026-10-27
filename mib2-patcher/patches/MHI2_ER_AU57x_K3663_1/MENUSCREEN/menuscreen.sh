@@ -25,13 +25,13 @@ VERSION="0.2.0"
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
 
-# Package folder on the SD card (where this script lives), custom-patches/MENUSCREEN
+# Package folder on the SD card (where this script lives), mib2-patcher/patches/<train>/MENUSCREEN
 PKG=$(dirname "$0")
 case "$PKG" in
 	/*) ;;
 	*) PKG="$(pwd)/$PKG" ;;
 esac
-SD_ROOT="${PKG%/*/*}"
+SD_ROOT="${PKG%/*/*/*/*}"
 
 LOG="$PKG/menuscreen.log"
 
@@ -47,7 +47,7 @@ LSD_BAK="$LSD_SH.menuscreen.bak"
 JARS="$HMI/lsd/jars"
 JAR_NAME="MENUSCREEN.jar"
 ESD_SRC="$PKG/esd/MENUSCREEN.esd"
-ESD_LINK="$HMI/engdefs/z_MENUSCREEN.esd"
+ESD_LINK="$HMI/engdefs/z_mib2patcher_MENUSCREEN.esd"
 MARKER="#MENUSCREEN"
 
 # Boot guard flags, seen by lsd.sh as /mnt/persist on the MMX
@@ -138,7 +138,8 @@ check_not_busy() {
 
 check_firmware() {
 	[ -f "$LSD_JXE" ] || die "$LSD_JXE not found"
-	sum=$(sha1_of "$LSD_JXE")
+	# patcher.sh exports the sha1 it already checked
+	sum=${PATCHER_JXE_SHA1:-$(sha1_of "$LSD_JXE")}
 	if [ -z "$sum" ]; then
 		[ $FORCE = 1 ] || die "no sha1sum tool found to check the firmware (use -force to skip)"
 		log "WARNING: firmware check skipped"
@@ -431,7 +432,8 @@ do_status() {
 
 	# Last, because the checksum of the 45 MB lsd.jxe takes a while
 	log "firmware:   checking, this can take a minute..."
-	sum=$(sha1_of "$LSD_JXE")
+	# patcher.sh exports the sha1 it already checked
+	sum=${PATCHER_JXE_SHA1:-$(sha1_of "$LSD_JXE")}
 	if [ -z "$sum" ]; then
 		log "firmware:   unknown (no sha1sum tool)"
 	elif [ "$sum" = "$SUPPORTED_JXE_SHA1" ]; then

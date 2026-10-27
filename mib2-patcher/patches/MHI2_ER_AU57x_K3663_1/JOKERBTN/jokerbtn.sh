@@ -28,13 +28,13 @@ VERSION="1.1.0"
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
 
-# Package folder on the SD card (where this script lives), custom-patches/JOKERBTN
+# Package folder on the SD card (where this script lives), mib2-patcher/patches/<train>/JOKERBTN
 PKG=$(dirname "$0")
 case "$PKG" in
 	/*) ;;
 	*) PKG="$(pwd)/$PKG" ;;
 esac
-SD_ROOT="${PKG%/*/*}"
+SD_ROOT="${PKG%/*/*/*/*}"
 
 LOG="$PKG/jokerbtn.log"
 
@@ -147,7 +147,8 @@ check_not_busy() {
 
 check_firmware() {
 	[ -f "$LSD_JXE" ] || die "$LSD_JXE not found"
-	sum=$(sha1_of "$LSD_JXE")
+	# patcher.sh exports the sha1 it already checked
+	sum=${PATCHER_JXE_SHA1:-$(sha1_of "$LSD_JXE")}
 	if [ -z "$sum" ]; then
 		[ $FORCE = 1 ] || die "no sha1sum tool found to check the firmware (use -force to skip)"
 		log "WARNING: firmware check skipped"
@@ -253,13 +254,13 @@ remove_patch_lines() {
 }
 
 has_gem_link() {
-	[ -L "$ENGDEFS/z_JOKERBTN.esd" ] || [ -f "$ENGDEFS/z_JOKERBTN.esd" ]
+	[ -L "$ENGDEFS/z_mib2patcher_JOKERBTN.esd" ] || [ -f "$ENGDEFS/z_mib2patcher_JOKERBTN.esd" ]
 }
 
 remove_gem_link() {
 	removed=0
 	for name in $ESD_NAMES; do
-		link="$ENGDEFS/z_$name.esd"
+		link="$ENGDEFS/z_mib2patcher_$name.esd"
 		if [ -L "$link" ] || [ -f "$link" ]; then
 			rm -f "$link" 2> /dev/null || on -f mmx rm -f "$link" 2> /dev/null
 			removed=1
@@ -440,7 +441,8 @@ do_status() {
 
 	# Last, because the checksum of the 45 MB lsd.jxe takes a while
 	log "firmware:   checking, this can take a minute..."
-	sum=$(sha1_of "$LSD_JXE")
+	# patcher.sh exports the sha1 it already checked
+	sum=${PATCHER_JXE_SHA1:-$(sha1_of "$LSD_JXE")}
 	if [ -z "$sum" ]; then
 		log "firmware:   unknown (no sha1sum tool)"
 	elif [ "$sum" = "$SUPPORTED_JXE_SHA1" ]; then
@@ -489,13 +491,13 @@ do_gem_on() {
 	done
 	mount_rw
 	for name in $ESD_NAMES; do
-		link="$ENGDEFS/z_$name.esd"
+		link="$ENGDEFS/z_mib2patcher_$name.esd"
 		rm -f "$link" 2> /dev/null
 		ln -s "$ESD_DIR/$name.esd" "$link" 2> /dev/null || on -f mmx ln -s "$ESD_DIR/$name.esd" "$link" 2> /dev/null
 	done
 	mount_ro
 	for name in $ESD_NAMES; do
-		[ -L "$ENGDEFS/z_$name.esd" ] || [ -f "$ENGDEFS/z_$name.esd" ] || die "could not link $ENGDEFS/z_$name.esd"
+		[ -L "$ENGDEFS/z_mib2patcher_$name.esd" ] || [ -f "$ENGDEFS/z_mib2patcher_$name.esd" ] || die "could not link $ENGDEFS/z_mib2patcher_$name.esd"
 	done
 	log "GEM screens added, they show up after the next reboot"
 }

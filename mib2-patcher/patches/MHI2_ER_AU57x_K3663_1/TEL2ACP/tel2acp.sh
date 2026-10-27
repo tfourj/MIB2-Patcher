@@ -26,13 +26,13 @@ VERSION="1.2.0"
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
 
-# Package folder on the SD card (where this script lives), custom-patches/TEL2ACP
+# Package folder on the SD card (where this script lives), mib2-patcher/patches/<train>/TEL2ACP
 PKG=$(dirname "$0")
 case "$PKG" in
 	/*) ;;
 	*) PKG="$(pwd)/$PKG" ;;
 esac
-SD_ROOT="${PKG%/*/*}"
+SD_ROOT="${PKG%/*/*/*/*}"
 
 LOG="$PKG/tel2acp.log"
 
@@ -48,10 +48,10 @@ LSD_BAK="$LSD_SH.tel2acp.bak"
 JARS="$HMI/lsd/jars"
 JAR_NAME="TEL2ACP.jar"
 ESD_SRC="$PKG/esd/TEL2ACP.esd"
-ESD_LINK="$HMI/engdefs/z_TEL2ACP.esd"
-# Set_CarPlay_Custom submenu. Sorts after z_TEL2ACP.esd, so its parent screen exists first
+ESD_LINK="$HMI/engdefs/z_mib2patcher_TEL2ACP.esd"
+# Set_CarPlay_Custom submenu. Sorts after z_mib2patcher_TEL2ACP.esd, so its parent screen exists first
 ESD_CUSTOM_SRC="$PKG/esd/TEL2ACP_custom.esd"
-ESD_CUSTOM_LINK="$HMI/engdefs/z_TEL2ACP_custom.esd"
+ESD_CUSTOM_LINK="$HMI/engdefs/z_mib2patcher_TEL2ACP_custom.esd"
 MARKER="#TEL2ACP"
 
 # Boot guard flags. lsd.sh and the patched class see /mnt/persist on the MMX
@@ -138,7 +138,8 @@ check_not_busy() {
 
 check_firmware() {
 	[ -f "$LSD_JXE" ] || die "$LSD_JXE not found"
-	sum=$(sha1_of "$LSD_JXE")
+	# patcher.sh exports the sha1 it already checked
+	sum=${PATCHER_JXE_SHA1:-$(sha1_of "$LSD_JXE")}
 	if [ -z "$sum" ]; then
 		[ $FORCE = 1 ] || die "no sha1sum tool found to check the firmware (use -force to skip)"
 		log "WARNING: firmware check skipped"
@@ -443,7 +444,8 @@ do_status() {
 
 	# Last, because the checksum of the 45 MB lsd.jxe takes a while
 	log "firmware:   checking, this can take a minute..."
-	sum=$(sha1_of "$LSD_JXE")
+	# patcher.sh exports the sha1 it already checked
+	sum=${PATCHER_JXE_SHA1:-$(sha1_of "$LSD_JXE")}
 	if [ -z "$sum" ]; then
 		log "firmware:   unknown (no sha1sum tool)"
 	elif [ "$sum" = "$SUPPORTED_JXE_SHA1" ]; then

@@ -8,25 +8,25 @@
 screen   Set_CarPlay_Custom TEL2ACP
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/status.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/status.sh"
    label    "Show current setting"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-phone.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-phone.sh"
    label    "[x] Phone"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-home.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-home.sh"
    label    "[ ] Home"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-maps.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-maps.sh"
    label    "[ ] Maps"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-music.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-music.sh"
    label    "[ ] Music"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-nowplaying.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-nowplaying.sh"
    label    "[ ] Now Playing"
