@@ -38,7 +38,7 @@ All other buttons work as before.
 
 - Audi MHI2 with firmware **`MHI2_ER_AU57x_K3663_1`** (MU1425), e.g. A6/A7 C7.
   The installer checks the firmware fingerprint and refuses to run on anything else.
-- [M.I.B.](https://wiki.mibsolution.one/en/MHI2) on an SD card in the **SD1 slot** (`sda0`), with GEM enabled.
+- [MIB2-Patcher](../../README.md#install) on the unit (needs M.I.B. once).
 - For the CarPlay skip: the star button set to **skip forward** in the MMI car settings, and the joker set to `stock` here.
 - SSH access to the unit (recommended, see [Setting up SSH](../../README.md#setting-up-ssh)).
 
@@ -53,22 +53,23 @@ All other buttons work as before.
 
 ## Install
 
-1. Copy the `mib2-patcher` folder to the M.I.B. SD card and add the MIB2_Patcher GEM screen (see the [main README](../../README.md#install)).
+1. Copy MIB2-Patcher to the unit (see the [main README](../../README.md#install)).
 2. Run the installer, using **one** of these:
 
    - GEM → MIB2_Patcher → JOKERBTN → Install
    - Over SSH:
 
      ```sh
-     on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/jokerbtn.sh install
+     on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh JOKERBTN install
      ```
 
-   - Without SSH: set `PATCHER_RUN="JOKERBTN install"` in `mod/command.sh` (see the [main README](../../README.md#install)).
+   - Without SSH: add a line `JOKERBTN install` after `update` in `PATCHER_RUN` in `mod/command.sh` (see the [main README](../../README.md#install)).
 
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Play something in CarPlay and press the star button. It should skip to the next track. INFO and a short press on the voice button should skip back and forward.
 
-The installer writes everything it does to `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/jokerbtn.log` on the SD card.
+The installer writes everything it does to `/mnt/persist/mib2-patcher/JOKERBTN/jokerbtn.log` on the unit.
+GEM → MIB2_Patcher → **Copy logs to SD card** copies it to the card.
 
 ## Choosing the functions
 
@@ -78,11 +79,11 @@ The installer writes everything it does to `mib2-patcher/patches/MHI2_ER_AU57x_K
 **Over SSH**:
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/jokerbtn.sh set info next
+on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh JOKERBTN set info next
 ```
 
 The button is `joker`, `info` or `voice`, the function one from the table above. `status` shows the current settings.
-The GEM screens and `set` only work while the SD card is in SD1. The settings stay on the unit (`/mnt/persist/jokerbtn.conf`), so the buttons keep working without the card.
+The settings are stored in `/mnt/persist/jokerbtn.conf` and kept by MIB2-Patcher updates.
 
 **The joker** uses the MMI's own joker setting only when it is set to `stock`. Any other function here replaces it.
 
@@ -103,10 +104,10 @@ JOKERBTN now includes everything MFLBTN did. If MFLBTN is installed, the install
 ## Uninstall
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/jokerbtn.sh uninstall
+on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh JOKERBTN uninstall
 ```
 
-Or use **Uninstall** in the GEM screen, or set `PATCHER_RUN="JOKERBTN uninstall"` in `mod/command.sh`. Reboot afterwards.
+Or use **Uninstall** in the GEM screen, or add a line `JOKERBTN uninstall` to `PATCHER_RUN` in `mod/command.sh`. Reboot afterwards.
 
 `restore` puts back the original `lsd.sh` saved on first install, in case `uninstall` can't clean it.
 
@@ -115,7 +116,7 @@ Or use **Uninstall** in the GEM screen, or set `PATCHER_RUN="JOKERBTN uninstall"
 **Before changing anything**, the installer checks that:
 
 - the firmware is exactly `MHI2_ER_AU57x_K3663_1` (checksum of `/ifs/lsd.jxe`)
-- `JOKERBTN.jar` on the card isn't damaged, and the copy on the unit matches it
+- `JOKERBTN.jar` in MIB2-Patcher isn't damaged, and the copy the HMI loads matches it
 - `lsd.sh` has the expected layout, and MFLBTN isn't installed
 - `/mnt/persist` is writable (the boot guard needs it)
 - M.I.B. isn't busy flashing, backing up or rebooting
@@ -130,7 +131,7 @@ If the flag is still there at the next start, that start failed, so the block st
 
 1. Lock the car and leave it until the MMI shuts down, or restart the MMI. The next start runs without the patch.
 2. Check `status` (GEM screen, SSH or `mod/command.sh`). It shows `DISABLED the patch after a failed start`.
-3. Run `uninstall`. Keep `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/jokerbtn.log` from the card, it shows what happened.
+3. Run `uninstall`. Copy the logs to the SD card and keep them, they show what happened.
 
 The boot guard only covers starting up. If the screen software ever crashed when you press one of the three buttons, it would come back with the patch still on.
 Then set the buttons to `stock` in the GEM screen and run `uninstall`.
@@ -149,7 +150,7 @@ See [Setting up SSH](../../README.md#setting-up-ssh) in the main README.
   If another mod (like TEL2ACP) already uses `-Xbootclasspath/p:`, JOKERBTN joins that list instead of adding a second option, so both work.
 - Writes the button settings to `/mnt/persist/jokerbtn.conf` (only if there are none yet).
 - Uses three small flag files in `/mnt/persist` (`jokerbtn_pending`, `jokerbtn_loaded`, `jokerbtn_disabled`).
-- Saves the original `lsd.sh` as `lsd.sh.jokerbtn.bak` on the unit and `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/backup/lsd.sh` on the card.
+- Saves the original `lsd.sh` as `lsd.sh.jokerbtn.bak` on the unit and `/mnt/persist/mib2-patcher/JOKERBTN/backup/lsd.sh`.
 
 `uninstall` and `restore` also delete the settings file. `-force` installs anyway when the firmware doesn't match or no `sha1sum` tool is found. A damaged jar is never installed.
 

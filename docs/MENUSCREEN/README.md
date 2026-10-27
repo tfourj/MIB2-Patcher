@@ -30,7 +30,7 @@ To see roughly how it will look before installing, open [preview/menuscreen-prev
 
 - Audi MHI2 with firmware **`MHI2_ER_AU57x_K3663_1`** (MU1425), e.g. A6/A7 C7.
   The installer checks the firmware fingerprint and refuses to run on anything else.
-- [M.I.B.](https://wiki.mibsolution.one/en/MHI2) on an SD card in the **SD1 slot** (`sda0`), with GEM enabled.
+- [MIB2-Patcher](../../README.md#install) on the unit (needs M.I.B. once).
 - SSH access to the unit (recommended, see [Setting up SSH](../../README.md#setting-up-ssh)).
 
 ## What's in the `MENUSCREEN` folder
@@ -44,29 +44,30 @@ To see roughly how it will look before installing, open [preview/menuscreen-prev
 
 ## Install
 
-1. Copy the `mib2-patcher` folder to the M.I.B. SD card and add the MIB2_Patcher GEM screen (see the [main README](../../README.md#install)).
+1. Copy MIB2-Patcher to the unit (see the [main README](../../README.md#install)).
 2. Run the installer, using **one** of these:
 
    - GEM → MIB2_Patcher → MENUSCREEN → Install
    - Over SSH:
 
      ```sh
-     on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.sh install
+     on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh MENUSCREEN install
      ```
 
-   - Without SSH: set `PATCHER_RUN="MENUSCREEN install"` in `mod/command.sh` (see the [main README](../../README.md#install)).
+   - Without SSH: add a line `MENUSCREEN install` after `update` in `PATCHER_RUN` in `mod/command.sh` (see the [main README](../../README.md#install)).
 
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Open MENU. A tile called **Custom** should be there. Select it.
 
-The installer writes everything it does to `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.log` on the SD card.
+The installer writes everything it does to `/mnt/persist/mib2-patcher/MENUSCREEN/menuscreen.log` on the unit.
+GEM → MIB2_Patcher → **Copy logs to SD card** copies it to the card.
 
 ## Settings
 
 **Slot**: in the GEM screen, or over SSH:
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.sh slot off
+on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh MENUSCREEN slot off
 ```
 
 It works the next time MENU opens, no reboot needed.
@@ -91,18 +92,18 @@ title=MENUSCREEN
 6. Press BACK, then MENU, then a hard key like NAV. Each should leave the screen.
 7. Open the CAR menu and check it still works (it uses the same tile class).
 8. Run **Status** in the GEM or over SSH. It shows the last lines of the patch log, `/mnt/persist/menuscreen.log`,
-   and copies it to `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen-unit.log` on the SD card.
+   and copies it to `/mnt/persist/mib2-patcher/MENUSCREEN/menuscreen-unit.log`, which **Copy logs to SD card** puts on the card.
    The patch writes a line when it loads its settings, when the tile is pressed, at each step of opening the screen, when a button runs, and when something fails.
 
-Please send `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.log` and a photo of the screen, whatever happens.
+Please send the logs from **Copy logs to SD card** and a photo of the screen, whatever happens.
 
 ## Uninstall
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.sh uninstall
+on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh MENUSCREEN uninstall
 ```
 
-Or use **Uninstall** in the GEM screen, or set `PATCHER_RUN="MENUSCREEN uninstall"` in `mod/command.sh`. Reboot afterwards.
+Or use **Uninstall** in the GEM screen, or add a line `MENUSCREEN uninstall` to `PATCHER_RUN` in `mod/command.sh`. Reboot afterwards.
 `restore` puts back the original `lsd.sh` saved on first install, in case `uninstall` can't clean it.
 
 ## Safeguards

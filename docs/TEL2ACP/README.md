@@ -18,7 +18,7 @@ All other buttons work as before. The TEL light only follows CarPlay when TEL op
 
 - Audi MHI2 with firmware **`MHI2_ER_AU57x_K3663_1`** (MU1425), e.g. A6/A7 C7.
   The installer checks the firmware fingerprint and refuses to run on anything else.
-- [M.I.B.](https://wiki.mibsolution.one/en/MHI2) on an SD card in the **SD1 slot** (`sda0`), with GEM enabled.
+- [MIB2-Patcher](../../README.md#install) on the unit (needs M.I.B. once).
 - SSH access to the unit (recommended, see [Setting up SSH](../../README.md#setting-up-ssh)).
 
 ## What's in the `TEL2ACP` folder
@@ -32,22 +32,23 @@ All other buttons work as before. The TEL light only follows CarPlay when TEL op
 
 ## Install
 
-1. Copy the `mib2-patcher` folder to the M.I.B. SD card and add the MIB2_Patcher GEM screen (see the [main README](../../README.md#install)).
+1. Copy MIB2-Patcher to the unit (see the [main README](../../README.md#install)).
 2. Run the installer, using **one** of these:
 
    - GEM → MIB2_Patcher → TEL2ACP → Install
    - Over SSH:
 
      ```sh
-     on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.sh install
+     on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh TEL2ACP install
      ```
 
-   - Without SSH: set `PATCHER_RUN="TEL2ACP install"` in `mod/command.sh` (see the [main README](../../README.md#install)).
+   - Without SSH: add a line `TEL2ACP install` after `update` in `PATCHER_RUN` in `mod/command.sh` (see the [main README](../../README.md#install)).
 
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Press TEL. CarPlay should open.
 
-The installer writes everything it does to `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.log` on the SD card.
+The installer writes everything it does to `/mnt/persist/mib2-patcher/TEL2ACP/tel2acp.log` on the unit.
+GEM → MIB2_Patcher → **Copy logs to SD card** copies it to the card.
 
 ## TEL modes
 
@@ -72,8 +73,8 @@ CarPlay Custom is set in GEM → MIB2_Patcher → TEL2ACP → Set_CarPlay_Custom
 Switch with the GEM buttons, or over SSH:
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.sh mode-custom
-on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.sh custom-music
+on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh TEL2ACP mode-custom
+on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh TEL2ACP custom-music
 ```
 
 `mode-*` and `custom-*` also work in `mod/command.sh`, one per line, e.g. `PATCHER_RUN="TEL2ACP mode-custom"`.
@@ -95,10 +96,10 @@ and both jars go into one shared `-Xbootclasspath/p:` list. Each has its own boo
 ## Uninstall
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.sh uninstall
+on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh TEL2ACP uninstall
 ```
 
-Or use **Uninstall** in the GEM screen, or set `PATCHER_RUN="TEL2ACP uninstall"` in `mod/command.sh`. Reboot afterwards.
+Or use **Uninstall** in the GEM screen, or add a line `TEL2ACP uninstall` to `PATCHER_RUN` in `mod/command.sh`. Reboot afterwards.
 
 `restore` puts back the original `lsd.sh` saved on first install, in case `uninstall` can't clean it.
 
@@ -107,7 +108,7 @@ Or use **Uninstall** in the GEM screen, or set `PATCHER_RUN="TEL2ACP uninstall"`
 **Before changing anything**, the installer checks that:
 
 - the firmware is exactly `MHI2_ER_AU57x_K3663_1` (checksum of `/ifs/lsd.jxe`)
-- `TEL2ACP.jar` on the card isn't damaged, and the copy on the unit matches it
+- `TEL2ACP.jar` in MIB2-Patcher isn't damaged, and the copy the HMI loads matches it
 - `lsd.sh` has the expected layout
 - `/mnt/persist` is writable (the boot guard needs it)
 - M.I.B. isn't busy flashing, backing up or rebooting
@@ -122,7 +123,7 @@ If the flag is still there at the next start, that start failed, so the block st
 
 1. Lock the car and leave it until the MMI shuts down, or restart the MMI. The next start runs without the patch.
 2. Check `status` (GEM screen, SSH or `mod/command.sh`). It shows `DISABLED the patch after a failed start`.
-3. Run `uninstall`. Keep `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.log` from the card, it shows what happened.
+3. Run `uninstall`. Copy the logs to the SD card and keep them, they show what happened.
 
 The boot guard only covers starting up. If the screen software ever crashed when you *press* TEL, it would come back with the patch still on.
 Then stop using TEL and run `uninstall` from the GEM screen.
@@ -142,7 +143,7 @@ See [Setting up SSH](../../README.md#setting-up-ssh) in the main README.
 - Uses three small flag files in `/mnt/persist` (`tel2acp_pending`, `tel2acp_loaded`, `tel2acp_disabled`).
   The TEL mode is stored in `/mnt/persist/tel2acp_mode` (no file means TEL / CarPlay),
   CarPlay Custom in `/mnt/persist/tel2acp_custom` (no file means Phone).
-- Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/backup/lsd.sh` on the card.
+- Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `/mnt/persist/mib2-patcher/TEL2ACP/backup/lsd.sh`.
 
 `-force` installs anyway when the firmware doesn't match or no `sha1sum` tool is found. A damaged jar is never installed.
 
