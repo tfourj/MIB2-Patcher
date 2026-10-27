@@ -1,0 +1,22 @@
+#---------------------------------------------------------------------
+# JOKERBTN - the joker (star) button skips tracks in Apple CarPlay, and the joker, INFO and voice buttons can be set to other functions
+# Linked into /eso/hmi/engdefs by "jokerbtn.sh gem-on"
+# Needs the M.I.B. SD card in the sda0 slot
+#---------------------------------------------------------------------
+screen   JOKERBTN Main
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/status.sh"
+   label    "Status and button settings"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/install.sh"
+   label    "Install button patch"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/uninstall.sh"
+   label    "Uninstall button patch"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/JOKERBTN/esd/restore.sh"
+   label    "Restore original lsd.sh"
