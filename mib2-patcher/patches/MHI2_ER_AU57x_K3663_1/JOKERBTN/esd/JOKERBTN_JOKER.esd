@@ -1,46 +1,46 @@
 #---------------------------------------------------------------------
 # JOKERBTN - joker (star) button
 # Linked into /eso/hmi/engdefs by "jokerbtn.sh gem-on"
-# Needs the M.I.B. SD card in the sda0 slot
+# Runs from the copy on the unit (/mnt/app/eso/mib2-patcher), no SD card needed
 #---------------------------------------------------------------------
 screen   Joker_button JOKERBTN
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-stock.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-stock.sh"
    label    "Stock (MMI joker setting)"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-prev.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-prev.sh"
    label    "Previous track"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-next.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-next.sh"
    label    "Next track"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-mute.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-mute.sh"
    label    "Mute"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-navinfo.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-navinfo.sh"
    label    "Nav announcement"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-radio.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-radio.sh"
    label    "Radio"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-media.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-media.sh"
    label    "Media"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-phone.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-phone.sh"
    label    "Phone (TEL key)"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-nav.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-nav.sh"
    label    "Navigation (NAV key)"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-menu.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/set/joker-menu.sh"
    label    "MENU"

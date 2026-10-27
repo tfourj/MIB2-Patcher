@@ -1,22 +1,22 @@
 #---------------------------------------------------------------------
 # JOKERBTN - the joker (star) button skips tracks in Apple CarPlay, and the joker, INFO and voice buttons can be set to other functions
 # Linked into /eso/hmi/engdefs by "jokerbtn.sh gem-on"
-# Needs the M.I.B. SD card in the sda0 slot
+# Runs from the copy on the unit (/mnt/app/eso/mib2-patcher), no SD card needed
 #---------------------------------------------------------------------
 screen   JOKERBTN MIB2_Patcher
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/status.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/status.sh"
    label    "Status and button settings"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/install.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/install.sh"
    label    "Install button patch"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/uninstall.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/uninstall.sh"
    label    "Uninstall button patch"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/restore.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/esd/restore.sh"
    label    "Restore original lsd.sh"

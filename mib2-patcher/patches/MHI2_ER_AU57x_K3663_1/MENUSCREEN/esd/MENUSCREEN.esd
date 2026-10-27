@@ -1,34 +1,34 @@
 #---------------------------------------------------------------------
 # MENUSCREEN - a MENU tile that opens a custom screen (prototype)
 # Linked into /eso/hmi/engdefs by "menuscreen.sh gem-on"
-# Needs the M.I.B. SD card in the sda0 slot
+# Runs from the copy on the unit (/mnt/app/eso/mib2-patcher), no SD card needed
 #---------------------------------------------------------------------
 screen   MENUSCREEN MIB2_Patcher
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/status.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/status.sh"
    label    "Status and screen log"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/install.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/install.sh"
    label    "Install MENU screen"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/uninstall.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/uninstall.sh"
    label    "Uninstall MENU screen"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/restore.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/restore.sh"
    label    "Restore original lsd.sh"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/slot-online.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/slot-online.sh"
    label    "Use the Audi connect tile"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/slot-breakdown.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/slot-breakdown.sh"
    label    "Use the Breakdown call tile"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/slot-off.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/esd/slot-off.sh"
    label    "MENU tile off (stock MENU)"

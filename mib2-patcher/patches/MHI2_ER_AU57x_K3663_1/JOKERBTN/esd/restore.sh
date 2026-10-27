@@ -2,7 +2,7 @@
 # GEM entry: JOKERBTN restore
 # Runs on the RCC like the M.I.B. scripts do
 
-on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/JOKERBTN/jokerbtn.sh restore
+on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh JOKERBTN restore
 
 # GEM closes the output when the script ends, so leave time to read it
 sleep 10

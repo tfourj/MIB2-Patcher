@@ -2,31 +2,31 @@
 # TEL2ACP - Set CarPlay Custom: the CarPlay screen TEL opens in the
 # CarPlay / CarPlay Custom mode
 # Submenu of the TEL2ACP screen, linked into /eso/hmi/engdefs by "tel2acp.sh gem-on"
-# Needs the M.I.B. SD card in the sda0 slot
+# Runs from the copy on the unit (/mnt/app/eso/mib2-patcher), no SD card needed
 # [x] marks the selected screen, tel2acp.sh rewrites them
 #---------------------------------------------------------------------
 screen   Set_CarPlay_Custom TEL2ACP
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/status.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/status.sh"
    label    "Show current setting"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-phone.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-phone.sh"
    label    "[x] Phone"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-home.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-home.sh"
    label    "[ ] Home"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-maps.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-maps.sh"
    label    "[ ] Maps"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-music.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-music.sh"
    label    "[ ] Music"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-nowplaying.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/custom-nowplaying.sh"
    label    "[ ] Now Playing"
