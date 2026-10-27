@@ -1,0 +1,19 @@
+#---------------------------------------------------------------------
+# MIB2-Patcher - one GEM entry for every patch that fits the firmware
+# Linked into /eso/hmi/engdefs by "patcher.sh gem-on"
+# Each patch adds its own screen below this one
+# Needs the M.I.B. SD card in the sda0 slot
+#---------------------------------------------------------------------
+screen   MIB2_Patcher Main
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/esd/status.sh"
+   label    "Status of all patches"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/esd/install.sh"
+   label    "Install all patches"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/esd/uninstall.sh"
+   label    "Uninstall all patches"
