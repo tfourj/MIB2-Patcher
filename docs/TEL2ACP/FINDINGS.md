@@ -32,7 +32,7 @@ J9 quirks found on this firmware, in case someone wants to repeat it:
 - Return opcodes are J9-specific (`AC` void, `AD` 1-slot, `AE` 2-slot, ...).
 - `static final` constants are inlined, so event IDs show up as literal `bipush`/`sipush`, not field refs.
 
-The tools are in [`tools/jxe/`](../tools/jxe), documented in [TOOLS.md](TOOLS.md).
+The tools are in [`tools/jxe/`](../../tools/jxe), documented in [TOOLS.md](../TOOLS.md).
 
 ## Key path: physical TEL button → phone screen
 
@@ -145,7 +145,7 @@ Nothing on the way into state `246` changes the light again, so TEL stays lit un
 CarPlay opened from the MENU tile or by the phone does not go through `HardKeyManager`, so the light doesn't change there.
 `FocusManager.setActiveApplication(.., 24)` sees every entry, but would mean rebuilding that class too.
 
-This is implemented in [`src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java`](../src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java).
+This is implemented in [`src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java`](../../source/MHI2_ER_AU57x_K3663_1/TEL2ACP/src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java).
 
 ### TEL modes and CarPlay Custom
 

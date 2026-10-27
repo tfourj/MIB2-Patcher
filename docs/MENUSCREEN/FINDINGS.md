@@ -1,7 +1,7 @@
 # Custom MENU screen: findings
 
 Unit: `MU1425` / `MHI2_ER_AU57x_K3663_1` (Audi MHI2, 2nd gen MMI)
-Source analysed: `MIB BACKUP/WHOLE MIB/backup/MU1425-.../MU1425-lsd.jxe`, with the tools in [`tools/jxe/`](../tools/jxe) ([TOOLS.md](TOOLS.md)).
+Source analysed: `MIB BACKUP/WHOLE MIB/backup/MU1425-.../MU1425-lsd.jxe`, with the tools in [`tools/jxe/`](../../tools/jxe) ([TOOLS.md](../TOOLS.md)).
 
 ## TL;DR
 

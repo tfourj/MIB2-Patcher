@@ -1,4 +1,4 @@
-# MIB2-A6C7-TEL2ACP
+# TEL2ACP
 
 Makes the **TEL** button on an Audi MHI2 MMI open **Apple CarPlay** (or Android Auto), packaged as an add-on for the M.I.B. (More Incredible Bash) SD card.
 
@@ -10,7 +10,7 @@ Makes the **TEL** button on an Audi MHI2 MMI open **Apple CarPlay** (or Android 
 All other buttons work as before. The TEL light only follows CarPlay when TEL opened it, not when CarPlay is opened from MENU or by the phone.
 
 > [!WARNING]
-> **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [docs/FINDINGS.md](docs/FINDINGS.md)).
+> **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > If something is wrong, the MMI screen software may not start (black screen, no GEM).
 > A [boot guard](#safeguards) turns the patch off by itself after one failed start. SSH is still the best way to undo things. Use at your own risk.
 
@@ -19,7 +19,7 @@ All other buttons work as before. The TEL light only follows CarPlay when TEL op
 - Audi MHI2 with firmware **`MHI2_ER_AU57x_K3663_1`** (MU1425), e.g. A6/A7 C7.
   The installer checks the firmware fingerprint and refuses to run on anything else.
 - [M.I.B.](https://wiki.mibsolution.one/en/MHI2) on an SD card in the **SD1 slot** (`sda0`), with GEM enabled.
-- SSH access to the unit (recommended, see [Setting up SSH](#setting-up-ssh)).
+- SSH access to the unit (recommended, see [Setting up SSH](../../README.md#setting-up-ssh)).
 
 ## What's in the `TEL2ACP` folder
 
@@ -28,39 +28,26 @@ All other buttons work as before. The TEL light only follows CarPlay when TEL op
 | `TEL2ACP.jar` | The patched `HardKeyManager` class |
 | `TEL2ACP.jar.sha1` | Checksum the installer uses to spot a damaged copy |
 | `tel2acp.sh` | Installer: `install`, `uninstall`, `restore`, `status`, `gem-on`, `gem-off`, `mode-*`, `custom-*` |
-| `command.sh` | Hook that runs every patch in `custom-patches/` from M.I.B. (no SSH needed) |
-| `esd/` | Optional GEM screen with Status, TEL mode, Install, Uninstall and Restore buttons, and a Set CarPlay Custom submenu |
+| `esd/` | GEM screen with Status, TEL mode, Install, Uninstall and Restore buttons, and a Set CarPlay Custom submenu |
 
 ## Install
 
-1. Copy the `TEL2ACP` folder into a `custom-patches` folder in the root of the M.I.B. SD card (`custom-patches/TEL2ACP`).
-2. Put the card in SD1 and run the installer, using **one** of these:
+1. Copy the `mib2-patcher` folder to the M.I.B. SD card and add the MIB2_Patcher GEM screen (see the [main README](../../README.md#install)).
+2. Run the installer, using **one** of these:
 
-   **Over SSH**
+   - GEM → MIB2_Patcher → TEL2ACP → Install
+   - Over SSH:
 
-   ```sh
-   on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh install
-   ```
+     ```sh
+     on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.sh install
+     ```
 
-   **Without SSH**: copy `TEL2ACP/command.sh` to `mod/command.sh` on the card.
-   Then run it with GEM → M.I.B. → individual script, or run the M.I.B. installation again
-   (software update from the SD card), which runs `mod/command.sh` at the end. Delete `mod/command.sh` afterwards.
-   It runs `install gem-on` for every patch in `custom-patches/`. To choose patches and actions, fill in `CUSTOM_PATCHES` at the top of the file.
+   - Without SSH: set `PATCHER_RUN="TEL2ACP install"` in `mod/command.sh` (see the [main README](../../README.md#install)).
 
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Press TEL. CarPlay should open.
 
-The installer writes everything it does to `custom-patches/TEL2ACP/tel2acp.log` on the SD card.
-
-### Optional GEM screen
-
-```sh
-on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh gem-on
-```
-
-After a reboot, GEM has a **TEL2ACP** screen with Status, the three TEL modes, Install, Uninstall and Restore,
-and a **Set_CarPlay_Custom** submenu (see [TEL modes](#tel-modes)).
-It only works while the SD card is in SD1. `command.sh` turns it on by default.
+The installer writes everything it does to `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.log` on the SD card.
 
 ## TEL modes
 
@@ -72,7 +59,7 @@ TEL always opens CarPlay. The mode sets what TEL does while CarPlay is already o
 | CarPlay only | Mode: CarPlay only | `mode-carplay` | Nothing |
 | CarPlay / CarPlay Custom | Mode: CarPlay / CarPlay Custom | `mode-custom` | The CarPlay Custom screen on the iPhone |
 
-CarPlay Custom is set in GEM → TEL2ACP → Set_CarPlay_Custom:
+CarPlay Custom is set in GEM → MIB2_Patcher → TEL2ACP → Set_CarPlay_Custom:
 
 | GEM button | Command | Opens in CarPlay |
 |---|---|---|
@@ -85,11 +72,11 @@ CarPlay Custom is set in GEM → TEL2ACP → Set_CarPlay_Custom:
 Switch with the GEM buttons, or over SSH:
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh mode-custom
-on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh custom-music
+on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.sh mode-custom
+on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.sh custom-music
 ```
 
-`mode-*` and `custom-*` also work as actions in `mod/command.sh`, e.g. `CUSTOM_PATCHES="TEL2ACP mode-custom custom-music"`.
+`mode-*` and `custom-*` also work in `mod/command.sh`, one per line, e.g. `PATCHER_RUN="TEL2ACP mode-custom"`.
 Changes apply from the next TEL press, no reboot needed. `status` shows the mode and CarPlay Custom.
 The GEM buttons also get an `[x]` in front of the selected mode and CarPlay Custom screen.
 GEM may only show a new `[x]` after an MMI reboot; Status is always up to date.
@@ -108,10 +95,10 @@ and both jars go into one shared `-Xbootclasspath/p:` list. Each has its own boo
 ## Uninstall
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh uninstall
+on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.sh uninstall
 ```
 
-Or use **Uninstall** in the GEM screen, or set `CUSTOM_PATCHES="TEL2ACP uninstall"` in `mod/command.sh`. Reboot afterwards.
+Or use **Uninstall** in the GEM screen, or set `PATCHER_RUN="TEL2ACP uninstall"` in `mod/command.sh`. Reboot afterwards.
 
 `restore` puts back the original `lsd.sh` saved on first install, in case `uninstall` can't clean it.
 
@@ -135,7 +122,7 @@ If the flag is still there at the next start, that start failed, so the block st
 
 1. Lock the car and leave it until the MMI shuts down, or restart the MMI. The next start runs without the patch.
 2. Check `status` (GEM screen, SSH or `mod/command.sh`). It shows `DISABLED the patch after a failed start`.
-3. Run `uninstall`. Keep `custom-patches/TEL2ACP/tel2acp.log` from the card, it shows what happened.
+3. Run `uninstall`. Keep `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/tel2acp.log` from the card, it shows what happened.
 
 The boot guard only covers starting up. If the screen software ever crashed when you *press* TEL, it would come back with the patch still on.
 Then stop using TEL and run `uninstall` from the GEM screen.
@@ -143,19 +130,7 @@ Running `install` again re-arms a disabled patch.
 
 ## Setting up SSH
 
-No cable is needed if the car has a Wi-Fi hotspot (the A6 C7 this was built on does). SSH works over it.
-
-1. Turn on the car's Wi-Fi hotspot in the MMI settings and connect your laptop to it.
-2. Turn on SSH with M.I.B. (its `sshd` mod). The [M.I.B. wiki](https://wiki.mibsolution.one/en/MHI2) has the menu entry and the login details.
-3. Connect from the laptop. In the system dump from this unit, the hotspot address of the MMI is `10.173.189.1`:
-
-   ```sh
-   ssh root@10.173.189.1
-   ```
-
-   If the laptop refuses the MMI's old key type, add `-o HostKeyAlgorithms=+ssh-rsa`.
-
-If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port works too. Check the M.I.B. wiki for supported adapters.
+See [Setting up SSH](../../README.md#setting-up-ssh) in the main README.
 
 ## What the installer changes
 
@@ -167,7 +142,7 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
 - Uses three small flag files in `/mnt/persist` (`tel2acp_pending`, `tel2acp_loaded`, `tel2acp_disabled`).
   The TEL mode is stored in `/mnt/persist/tel2acp_mode` (no file means TEL / CarPlay),
   CarPlay Custom in `/mnt/persist/tel2acp_custom` (no file means Phone).
-- Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `custom-patches/TEL2ACP/backup/lsd.sh` on the card.
+- Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/backup/lsd.sh` on the card.
 
 `-force` installs anyway when the firmware doesn't match or no `sha1sum` tool is found. A damaged jar is never installed.
 
@@ -176,11 +151,11 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
 Needs a JDK 8, because newer JDKs can't produce the old class format the MMI's J9 VM uses.
 
 ```bash
-JAVA_HOME="/path/to/jdk8" ./build.sh
+JAVA_HOME="/path/to/jdk8" ./build.sh MHI2_ER_AU57x_K3663_1 TEL2ACP
 ```
 
-This rebuilds `TEL2ACP/TEL2ACP.jar` from `src/`. The classes in `stubs/` only stand in for firmware types at compile time and are not included in the jar.
-Set `JXE` to your `lsd.jxe` to also check the jar against the firmware (see [docs/TOOLS.md](docs/TOOLS.md#checkrefspy)).
+This rebuilds `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/TEL2ACP.jar` from `source/MHI2_ER_AU57x_K3663_1/TEL2ACP/src/`. The classes in `stubs/` next to it only stand in for firmware types at compile time and are not included in the jar.
+Set `JXE` to your `lsd.jxe` to also check the jar against the firmware (see [TOOLS.md](../TOOLS.md#checkrefspy)).
 
 ## How it works
 
@@ -190,14 +165,14 @@ If a CarPlay screen (240000–240009) is already showing, the [TEL mode](#tel-mo
 `HK_TEL` as before, nothing, or `DSICarplay.requestUI(...)`, which asks the iPhone to show the CarPlay Custom screen.
 After opening CarPlay it lights the TEL key through `KbdService.setHKIlluminationExclusive`, the same call the phone screen uses.
 
-Full analysis: [docs/FINDINGS.md](docs/FINDINGS.md).
+Full analysis: [FINDINGS.md](FINDINGS.md).
 
 ## Analysis tools
 
-[`tools/jxe/`](tools/jxe) has the Python tools used to read the firmware: a class browser and disassembler for `lsd.jxe`, a state machine explorer, and a checker that tests a patch jar against the firmware.
-Usage is in [docs/TOOLS.md](docs/TOOLS.md).
+[`tools/jxe/`](../../tools/jxe) has the Python tools used to read the firmware: a class browser and disassembler for `lsd.jxe`, a state machine explorer, and a checker that tests a patch jar against the firmware.
+Usage is in [TOOLS.md](../TOOLS.md).
 
-To check whether TEL2ACP can support another firmware, run [`compat.py`](docs/TOOLS.md#compatpy) on that unit's `lsd.jxe` (from an M.I.B. backup, `backup/<MU>-<train>/<MU>-lsd.jxe`).
+To check whether TEL2ACP can support another firmware, run [`compat.py`](../TOOLS.md#compatpy) on that unit's `lsd.jxe` (from an M.I.B. backup, `backup/<MU>-<train>/<MU>-lsd.jxe`).
 
 ## Credits
 

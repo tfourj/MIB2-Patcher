@@ -14,7 +14,7 @@ The steering wheel joker ("star") button can be set to **skip forward** in the M
 **Fix:** a replacement `de.audi.app.terminalmode.AbstractTerminalModeHMIApplication` that also connects to the joker.
 A small new listener presses terminal mode's own `TERMINAL_HK_NEXT_BUTTON` when the joker is set to skip forward.
 
-All the analysis below was done with the tools in [`tools/jxe/`](../tools/jxe), documented in [TOOLS.md](TOOLS.md).
+All the analysis below was done with the tools in [`tools/jxe/`](../../tools/jxe), documented in [TOOLS.md](../TOOLS.md).
 
 ## Joker button setup
 

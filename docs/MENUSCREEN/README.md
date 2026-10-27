@@ -1,4 +1,4 @@
-# MIB2-A6C7-MENUSCREEN
+# MENUSCREEN
 
 **Prototype.** Adds a tile to the **MENU** screen of an Audi MHI2 MMI that opens a screen with three buttons, packaged as an add-on for the M.I.B. (More Incredible Bash) SD card.
 
@@ -19,10 +19,10 @@ The MMI has no free slot for a new tile, so the patch reuses one that is hidden 
 Turn the knob to choose a button and press it to start; the selection wraps around from the last button to the first. A line under the buttons says what happened.
 **BACK** or **MENU** goes back to the main menu. The tile keeps the icon of the tile it reuses.
 
-To see roughly how it will look before installing, open [docs/preview/menuscreen-preview.html](docs/preview/menuscreen-preview.html) in a browser. It also builds the settings file.
+To see roughly how it will look before installing, open [preview/menuscreen-preview.html](preview/menuscreen-preview.html) in a browser. It also builds the settings file.
 
 > [!WARNING]
-> **Not tested on a car yet.** The patch was built by reverse engineering one unit's firmware (see [docs/FINDINGS.md](docs/FINDINGS.md)).
+> **Not tested on a car yet.** The patch was built by reverse engineering one unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > It replaces the class that draws the tiles of the MENU and CAR menus. If something is wrong, those menus may not open.
 > GEM still opens and can uninstall it. A [boot guard](#safeguards) turns the patch off if the MMI restarts within a minute of starting. Have SSH ready. Use at your own risk.
 
@@ -31,7 +31,7 @@ To see roughly how it will look before installing, open [docs/preview/menuscreen
 - Audi MHI2 with firmware **`MHI2_ER_AU57x_K3663_1`** (MU1425), e.g. A6/A7 C7.
   The installer checks the firmware fingerprint and refuses to run on anything else.
 - [M.I.B.](https://wiki.mibsolution.one/en/MHI2) on an SD card in the **SD1 slot** (`sda0`), with GEM enabled.
-- SSH access to the unit (recommended, see the TEL2ACP or JOKERBTN README).
+- SSH access to the unit (recommended, see [Setting up SSH](../../README.md#setting-up-ssh)).
 
 ## What's in the `MENUSCREEN` folder
 
@@ -40,33 +40,33 @@ To see roughly how it will look before installing, open [docs/preview/menuscreen
 | `MENUSCREEN.jar` | The patched `ButtonWidget3D` tile class and the new screen classes |
 | `MENUSCREEN.jar.sha1` | Checksum the installer uses to spot a damaged copy |
 | `menuscreen.sh` | Installer: `install`, `uninstall`, `restore`, `status`, `slot`, `gem-on`, `gem-off` |
-| `command.sh` | Hook that runs every patch in `custom-patches/` from M.I.B. (no SSH needed) |
 | `esd/` | GEM screen: Status, Install, Uninstall, Restore and the slot choice |
 
 ## Install
 
-1. Copy the `MENUSCREEN` folder into a `custom-patches` folder in the root of the M.I.B. SD card (`custom-patches/MENUSCREEN`).
-2. Put the card in SD1 and run the installer, using **one** of these:
+1. Copy the `mib2-patcher` folder to the M.I.B. SD card and add the MIB2_Patcher GEM screen (see the [main README](../../README.md#install)).
+2. Run the installer, using **one** of these:
 
-   **Over SSH**
+   - GEM → MIB2_Patcher → MENUSCREEN → Install
+   - Over SSH:
 
-   ```sh
-   on -f rcc /net/mmx/fs/sda0/custom-patches/MENUSCREEN/menuscreen.sh install
-   ```
+     ```sh
+     on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.sh install
+     ```
 
-   **Without SSH**: copy `MENUSCREEN/command.sh` to `mod/command.sh` on the card and run it, the same way as for TEL2ACP and JOKERBTN.
+   - Without SSH: set `PATCHER_RUN="MENUSCREEN install"` in `mod/command.sh` (see the [main README](../../README.md#install)).
 
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Open MENU. A tile called **Custom** should be there. Select it.
 
-The installer writes everything it does to `custom-patches/MENUSCREEN/menuscreen.log` on the SD card.
+The installer writes everything it does to `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.log` on the SD card.
 
 ## Settings
 
 **Slot**: in the GEM screen, or over SSH:
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/custom-patches/MENUSCREEN/menuscreen.sh slot off
+on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.sh slot off
 ```
 
 It works the next time MENU opens, no reboot needed.
@@ -91,18 +91,18 @@ title=MENUSCREEN
 6. Press BACK, then MENU, then a hard key like NAV. Each should leave the screen.
 7. Open the CAR menu and check it still works (it uses the same tile class).
 8. Run **Status** in the GEM or over SSH. It shows the last lines of the patch log, `/mnt/persist/menuscreen.log`,
-   and copies it to `custom-patches/MENUSCREEN/menuscreen-unit.log` on the SD card.
+   and copies it to `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen-unit.log` on the SD card.
    The patch writes a line when it loads its settings, when the tile is pressed, at each step of opening the screen, when a button runs, and when something fails.
 
-Please send `custom-patches/MENUSCREEN/menuscreen.log` and a photo of the screen, whatever happens.
+Please send `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.log` and a photo of the screen, whatever happens.
 
 ## Uninstall
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/custom-patches/MENUSCREEN/menuscreen.sh uninstall
+on -f rcc /net/mmx/fs/sda0/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/menuscreen.sh uninstall
 ```
 
-Or use **Uninstall** in the GEM screen, or set `CUSTOM_PATCHES="MENUSCREEN uninstall"` in `mod/command.sh`. Reboot afterwards.
+Or use **Uninstall** in the GEM screen, or set `PATCHER_RUN="MENUSCREEN uninstall"` in `mod/command.sh`. Reboot afterwards.
 `restore` puts back the original `lsd.sh` saved on first install, in case `uninstall` can't clean it.
 
 ## Safeguards
@@ -130,10 +130,11 @@ Use `uninstall` rather than `restore` when more than one is installed.
 Needs a JDK 8, because newer JDKs can't produce the old class format the MMI's J9 VM uses.
 
 ```bash
-JAVA_HOME="/path/to/jdk8" ./build.sh
+JAVA_HOME="/path/to/jdk8" ./build.sh MHI2_ER_AU57x_K3663_1 MENUSCREEN
 ```
 
-Set `JXE` to your `lsd.jxe` to also check the jar against the firmware (see [docs/TOOLS.md](docs/TOOLS.md#checkrefspy)).
+This rebuilds `mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/MENUSCREEN/MENUSCREEN.jar` from `source/MHI2_ER_AU57x_K3663_1/MENUSCREEN/src/`. The classes in `stubs/` next to it only stand in for firmware types at compile time and are not included in the jar.
+Set `JXE` to your `lsd.jxe` to also check the jar against the firmware (see [TOOLS.md](../TOOLS.md#checkrefspy)).
 
 ## How it works
 
@@ -155,7 +156,7 @@ The buttons do what the firmware already does:
 - **Restart CarPlay** runs the firmware's `/etc/scripts/disable_usb_pwr_0.sh`, waits 3 seconds and runs `enable_usb_pwr_0.sh`, on a background thread.
   `smartphone_integrator` and the media process use the same scripts for USB power resets. Presses within 15 seconds of a restart are ignored.
 
-Full analysis: [docs/FINDINGS.md](docs/FINDINGS.md).
+Full analysis: [FINDINGS.md](FINDINGS.md).
 
 ## Credits
 
