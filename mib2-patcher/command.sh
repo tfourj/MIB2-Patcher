@@ -8,18 +8,20 @@
 # $VOLUME, so the SD1 slot is used then.
 #
 # PATCHER_RUN selects what runs, one patcher.sh call per line:
-#   gem-on                 add the MIB2_Patcher screen to the GEM (default)
+#   update                 copy MIB2-Patcher to the unit and add its GEM screen (default)
+#   update-force           the same, also when the unit has the same version
 #   install                install every patch of the train
-#   uninstall              remove every patch again
-#   status                 only write the status to patcher.log and the patch logs
+#   uninstall              remove every patch and MIB2-Patcher again
+#   status                 only write the status to the logs
 #   <PATCH> <command>      run one patch's installer
+# Everything except update needs MIB2-Patcher on the unit, so keep update first.
 # Example:
 #   PATCHER_RUN="
-#   gem-on
+#   update
 #   TEL2ACP install
 #   JOKERBTN uninstall
 #   "
-PATCHER_RUN="gem-on"
+PATCHER_RUN="update"
 
 patcher_gem=0
 if [ -z "$VOLUME" ]; then

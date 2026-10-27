@@ -2,18 +2,30 @@
 # MIB2-Patcher - one GEM entry for every patch that fits the firmware
 # Linked into /eso/hmi/engdefs by "patcher.sh gem-on"
 # Each patch adds its own screen below this one
-# Needs the M.I.B. SD card in the sda0 slot
+# Runs from the copy on the unit (/mnt/app/eso/mib2-patcher), no SD card needed
 #---------------------------------------------------------------------
 screen   MIB2_Patcher Main
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/esd/status.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/esd/status.sh"
    label    "Status of all patches"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/esd/install.sh"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/esd/update.sh"
+   label    "Update from SD card"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/esd/update-force.sh"
+   label    "Force update from SD card (reinstall)"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/esd/install.sh"
    label    "Install all patches"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/mib2-patcher/esd/uninstall.sh"
-   label    "Uninstall all patches"
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/esd/uninstall.sh"
+   label    "Uninstall everything"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/esd/logs.sh"
+   label    "Copy logs to SD card"
