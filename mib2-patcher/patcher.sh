@@ -276,8 +276,9 @@ remove_gem_link() {
 	fi
 }
 
-# Copies the patcher and the train's patches from the card folder $1 to the unit.
-# Runs the new copy afterwards, so the GEM screens and patches come from the new version
+# Copies the patcher and the train's patches from the card to the unit ($1 = 1
+# also when the card is not newer). Runs the new copy afterwards, so the GEM
+# screens and patches come from the new version
 do_update() {
 	force="$1"
 	if [ "$ROOT" = "$UNIT_DIR" ]; then
@@ -297,6 +298,15 @@ do_update() {
 	fi
 	check_not_busy
 
+	# The card's patcher does the copy, so no file of this copy is in use while it is replaced
+	if [ "$ROOT" = "$UNIT_DIR" ]; then
+		log "continuing with $src/patcher.sh"
+		action=update
+		[ "$force" = 1 ] && action=update-force
+		[ $FORCE = 1 ] && exec /bin/sh "$src/patcher.sh" -force "$action" < /dev/null
+		exec /bin/sh "$src/patcher.sh" "$action" < /dev/null
+	fi
+
 	if [ -f "$UNIT_DIR/train" ]; then
 		TRAIN=$(cat "$UNIT_DIR/train")
 		log "train:      $TRAIN"
@@ -304,14 +314,6 @@ do_update() {
 		detect_train "$src"
 	fi
 	[ -d "$src/patches/$TRAIN" ] || die "the card has no patches for $TRAIN"
-
-	# Patches the new version no longer has are uninstalled by their old installer
-	for name in $(patch_names); do
-		if [ ! -d "$src/patches/$TRAIN/$name" ] && is_installed "$name"; then
-			log "-- $name is not in $new any more, uninstalling it"
-			run_patch "$name" uninstall
-		fi
-	done
 
 	stage="$UNIT_DIR.new"
 	mount_rw
@@ -326,6 +328,16 @@ do_update() {
 		mount_ro
 		die "could not copy MIB2-Patcher to the unit, nothing changed"
 	fi
+
+	# Patches the new version no longer has are uninstalled by their old installer
+	for name in $(patch_names); do
+		if [ ! -d "$src/patches/$TRAIN/$name" ] && is_installed "$name"; then
+			log "-- $name is not in $new any more, uninstalling it"
+			run_patch "$name" uninstall
+			mount_rw
+		fi
+	done
+
 	if [ -d "$UNIT_DIR" ]; then
 		mv "$UNIT_DIR" "$UNIT_DIR.old" || { rm -rf "$stage"; mount_ro; die "could not replace $UNIT_DIR, nothing changed"; }
 	fi
