@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# MIB2-Patcher v1.1.0 - one GEM entry for every patch that fits the unit's firmware
+# MIB2-Patcher v1.2.0 - one GEM entry for every patch that fits the unit's firmware
 # Patches live in patches/<train>/<PATCH>, each with its own installer and GEM screens.
 # "update" copies the patcher and the patches of the unit's train from the SD card
 # to /mnt/app/eso/mib2-patcher, so the GEM screens work without the card afterwards
@@ -15,7 +15,8 @@
 #   uninstall     uninstall every patch and remove MIB2-Patcher from the unit
 #   gem-on        add the MIB2_Patcher screen and the screens of every patch to the GEM
 #   gem-off       remove them from the GEM
-#   logs          copy the logs to mib2-patcher/logs on the SD card
+#   logs          copy the logs to mib2-patcher/logs on the SD card (with a card in,
+#                 the logs are written there already)
 #   train         show the train
 #   <PATCH> ...   run that patch's installer, e.g. "patcher.sh JOKERBTN set info next"
 #   -force        pass -force to the patch installers, and use the only train folder
@@ -26,7 +27,7 @@
 # from the MIB2_Patcher GEM screen. Run from the card, every action except
 # update and update-force is passed on to the copy on the unit.
 
-VERSION="1.1.0"
+VERSION="1.2.0"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
@@ -52,10 +53,13 @@ PATCHES="$UNIT_DIR/patches"
 # Where update looks for a mib2-patcher folder: SD1, SD2, USB (the same order as M.I.B.)
 CARDS="/net/mmx/fs/sda0 /net/mmx/fs/sdb0 /net/mmx/fs/usb0_0"
 
-# Logs of the patcher and the patches. /mnt/app is read-only, /mnt/persist is not
+# The lsd.sh backups of the patches. /mnt/app is read-only, /mnt/persist is not
 DATA="/net/mmx/mnt/persist/mib2-patcher"
-LOG="$DATA/patcher.log"
-# Logs bigger than this are moved to <log>.old, so they can't fill /mnt/persist
+# Logs of the patcher and the patches. pick_logs moves them to the SD card when
+# one with a mib2-patcher folder is in, otherwise they stay in $DATA
+LOGS="$DATA"
+LOG="$LOGS/patcher.log"
+# Logs on the unit bigger than this are moved to <log>.old, so they can't fill /mnt/persist
 LOG_MAX=65536
 
 # The root GEM screen. The patch screens use the z_mib2patcher_ prefix, so they sort after it
@@ -163,6 +167,35 @@ find_card() {
 	return 1
 }
 
+# Logs to mib2-patcher/logs on the card when it can be written. Cards without a
+# mib2-patcher folder (navigation or music cards) are left alone
+pick_logs() {
+	if [ "$ROOT" = "$UNIT_DIR" ]; then
+		card=$(find_card) || return 0
+	else
+		card="$ROOT"
+	fi
+	mount -uw "${card%/*}" 2> /dev/null
+	mkdir -p "$card/logs" 2> /dev/null
+	{ : >> "$card/logs/patcher.log"; } 2> /dev/null || return 0
+	LOGS="$card/logs"
+	LOG="$LOGS/patcher.log"
+	move_unit_logs
+}
+
+# Appends the logs written on the unit while there was no card to the card's logs
+move_unit_logs() {
+	for f in "$DATA"/*.log "$DATA"/*/*.log; do
+		[ -f "$f" ] || continue
+		dest="$LOGS/${f#$DATA/}"
+		mkdir -p "${dest%/*}" 2> /dev/null
+		for part in "$f.old" "$f"; do
+			[ -f "$part" ] || continue
+			{ cat "$part" >> "$dest" && rm -f "$part"; } 2> /dev/null
+		done
+	done
+}
+
 # Picks the folder in $1/patches whose lsd.jxe.sha1 matches the unit. The sha1 is
 # exported, so the patch installers don't spend another minute on the 45 MB file
 detect_train() {
@@ -226,13 +259,14 @@ patch_installer() {
 	return 1
 }
 
-# The patch installers keep their logs in $PATCHER_DATA/<PATCH>
+# The patch installers keep their backups in $PATCHER_DATA/<PATCH> and their logs in $PATCHER_LOGS/<PATCH>
 run_patch() {
 	name="$1"
 	shift
 	sh_file=$(patch_installer "$name") || { log "$name: no installer found, skipped"; return 1; }
 	PATCHER_DATA="$DATA"
-	export PATCHER_DATA
+	PATCHER_LOGS="$LOGS"
+	export PATCHER_DATA PATCHER_LOGS
 	if [ $FORCE = 1 ]; then
 		/bin/sh "$sh_file" "$@" -force < /dev/null
 	else
@@ -425,11 +459,17 @@ do_uninstall() {
 	remove_gem_link
 	rm -rf "$UNIT_DIR" "$UNIT_DIR.old" "$UNIT_DIR.new" 2> /dev/null
 	mount_ro
-	log "MIB2-Patcher removed from the unit, the logs stay in $DATA. Reboot the MMI"
+	log "MIB2-Patcher removed from the unit, the logs stay in $LOGS. Reboot the MMI"
 }
 
 do_logs() {
 	log "== logs"
+	if [ "$LOGS" != "$DATA" ]; then
+		# The logs are on the card already, this only adds the lsd.sh backups
+		cp -r "$DATA"/* "$LOGS/" 2> /dev/null
+		log "the logs are on the card in $LOGS"
+		return 0
+	fi
 	card=""
 	for c in $CARDS; do
 		if [ -d "$c" ]; then card="$c"; break; fi
@@ -453,6 +493,7 @@ if [ -z "$1" ]; then
 	exit 1
 fi
 
+pick_logs
 rotate_logs
 
 # From the card, only update runs here. Everything else goes to the copy on the unit
