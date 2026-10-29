@@ -47,8 +47,8 @@ All other buttons work as before. The TEL light only follows CarPlay when TEL op
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Press TEL. CarPlay should open.
 
-The installer writes everything it does to `/mnt/persist/mib2-patcher/TEL2ACP/tel2acp.log` on the unit.
-GEM → MIB2_Patcher → **Copy logs to SD card** copies it to the card.
+The installer writes everything it does to `mib2-patcher/logs/TEL2ACP/tel2acp.log` on the SD card,
+or to `/mnt/persist/mib2-patcher/TEL2ACP/tel2acp.log` on the unit when no card is in.
 
 ## TEL modes
 

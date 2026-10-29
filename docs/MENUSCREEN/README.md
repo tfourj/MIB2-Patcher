@@ -59,8 +59,8 @@ To see roughly how it will look before installing, open [preview/menuscreen-prev
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Open MENU. A tile called **Custom** should be there. Select it.
 
-The installer writes everything it does to `/mnt/persist/mib2-patcher/MENUSCREEN/menuscreen.log` on the unit.
-GEM → MIB2_Patcher → **Copy logs to SD card** copies it to the card.
+The installer writes everything it does to `mib2-patcher/logs/MENUSCREEN/menuscreen.log` on the SD card,
+or to `/mnt/persist/mib2-patcher/MENUSCREEN/menuscreen.log` on the unit when no card is in.
 
 ## Settings
 
@@ -92,7 +92,7 @@ title=MENUSCREEN
 6. Press BACK, then MENU, then a hard key like NAV. Each should leave the screen.
 7. Open the CAR menu and check it still works (it uses the same tile class).
 8. Run **Status** in the GEM or over SSH. It shows the last lines of the patch log, `/mnt/persist/menuscreen.log`,
-   and copies it to `/mnt/persist/mib2-patcher/MENUSCREEN/menuscreen-unit.log`, which **Copy logs to SD card** puts on the card.
+   and copies it to `MENUSCREEN/menuscreen-unit.log` next to the installer log.
    The patch writes a line when it loads its settings, when the tile is pressed, at each step of opening the screen, when a button runs, and when something fails.
 
 Please send the logs from **Copy logs to SD card** and a photo of the screen, whatever happens.

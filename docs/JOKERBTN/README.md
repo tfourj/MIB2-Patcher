@@ -68,8 +68,8 @@ All other buttons work as before.
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Play something in CarPlay and press the star button. It should skip to the next track. INFO and a short press on the voice button should skip back and forward.
 
-The installer writes everything it does to `/mnt/persist/mib2-patcher/JOKERBTN/jokerbtn.log` on the unit.
-GEM → MIB2_Patcher → **Copy logs to SD card** copies it to the card.
+The installer writes everything it does to `mib2-patcher/logs/JOKERBTN/jokerbtn.log` on the SD card,
+or to `/mnt/persist/mib2-patcher/JOKERBTN/jokerbtn.log` on the unit when no card is in.
 
 ## Choosing the functions
 

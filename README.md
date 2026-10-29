@@ -61,8 +61,10 @@ Reinstalling also re-arms a patch that its boot guard turned off. The previous v
 
 ## Logs
 
-The patcher and the patches log to `/mnt/persist/mib2-patcher` on the unit, because the unit's `/mnt/app` is read-only.
-**Copy logs to SD card** in the GEM copies them to `mib2-patcher/logs` on the card. Logs over 64 KB are moved to `<log>.old`.
+When an SD card or USB stick with a `mib2-patcher` folder is in, the patcher and the patches log to `mib2-patcher/logs` on it.
+Without one they log to `/mnt/persist/mib2-patcher` on the unit, because the unit's `/mnt/app` is read-only, and logs over 64 KB are moved to `<log>.old`.
+The next run with the card in moves those logs to the card. The `lsd.sh` backups always stay on the unit.
+**Copy logs to SD card** in the GEM also copies the backups to the card.
 
 ## The GEM screen
 
@@ -109,7 +111,7 @@ Use **Uninstall everything** in the GEM, the Uninstall entry of one patch, or:
 on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh uninstall
 ```
 
-Uninstall everything also removes MIB2-Patcher from the unit. The logs stay in `/mnt/persist/mib2-patcher`.
+Uninstall everything also removes MIB2-Patcher from the unit. The logs and backups stay in `/mnt/persist/mib2-patcher` and on the card.
 Reboot afterwards. Use `uninstall` rather than `restore` when more than one patch is installed:
 `restore` puts back `lsd.sh` as it was before that patch's first install, which can also remove the other patches' blocks.
 
@@ -174,7 +176,8 @@ A patch is a folder in `mib2-patcher/patches/<train>/` with one installer `.sh` 
 `install`, `uninstall`, `status`, `gem-on` and `gem-off`, and passes anything else on from `patcher.sh <PATCH> ...`.
 
 - It marks its `lsd.sh` lines with `#<PATCH>`, which is how `update` sees that it is installed.
-- It writes its log to `$PATCHER_DATA/<PATCH>` when the patcher sets `PATCHER_DATA`, because its own folder on the unit is read-only.
+- It writes its log to `$PATCHER_LOGS/<PATCH>` and its backups to `$PATCHER_DATA/<PATCH>` when the patcher sets them,
+  because its own folder on the unit is read-only.
 - Its main GEM screen uses `MIB2_Patcher` as parent and is linked into `/eso/hmi/engdefs` as `z_mib2patcher_<PATCH>.esd`,
   so it sorts after the MIB2_Patcher screen.
 - Its GEM entries run `patcher.sh <PATCH> <command>` from `/net/mmx/mnt/app/eso/mib2-patcher`.
