@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# TEL2ACP v1.2.0 - the TEL hard key opens Apple CarPlay
+# TEL2ACP v1.2.1 - the TEL hard key opens Apple CarPlay
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
 # Usage: tel2acp.sh <command> [-force]
@@ -21,7 +21,7 @@
 # (mod/command.sh) or from the TEL2ACP GEM screen. Reboot the MMI after
 # install, uninstall and restore. The mode-* and custom-* commands work right away.
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
@@ -35,14 +35,20 @@ case "$PKG" in
 esac
 SD_ROOT="${PKG%/*/*/*/*}"
 
-# Logs and the lsd.sh copy go to the folder patcher.sh passes (on /mnt/persist,
-# because /mnt/app is read-only), or next to this script when it runs on its own
+# The lsd.sh copy goes to the folder patcher.sh passes (on /mnt/persist, because
+# /mnt/app is read-only), or next to this script when it runs on its own
 DATA="$PKG"
 if [ -n "$PATCHER_DATA" ]; then
 	DATA="$PATCHER_DATA/TEL2ACP"
 	mkdir -p "$DATA" 2> /dev/null
 fi
-LOG="$DATA/tel2acp.log"
+# The log goes to the log folder patcher.sh passes (on the SD card when one is in)
+LOGS="$DATA"
+if [ -n "$PATCHER_LOGS" ]; then
+	LOGS="$PATCHER_LOGS/TEL2ACP"
+	mkdir -p "$LOGS" 2> /dev/null
+fi
+LOG="$LOGS/tel2acp.log"
 
 # GEM scripts see the SD card read-only, the M.I.B. launcher remounts it the same way
 case "$PKG" in

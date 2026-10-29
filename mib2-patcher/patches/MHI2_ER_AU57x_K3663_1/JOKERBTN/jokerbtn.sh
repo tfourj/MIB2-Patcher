@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# JOKERBTN v1.1.0 - the steering wheel joker (star) button skips tracks in CarPlay,
+# JOKERBTN v1.1.1 - the steering wheel joker (star) button skips tracks in CarPlay,
 # and the joker, INFO and voice buttons can be set to other functions
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
@@ -23,7 +23,7 @@
 # (mod/command.sh) or from the JOKERBTN GEM screen. Reboot the MMI after
 # install, uninstall and restore.
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
@@ -37,14 +37,20 @@ case "$PKG" in
 esac
 SD_ROOT="${PKG%/*/*/*/*}"
 
-# Logs and the lsd.sh copy go to the folder patcher.sh passes (on /mnt/persist,
-# because /mnt/app is read-only), or next to this script when it runs on its own
+# The lsd.sh copy goes to the folder patcher.sh passes (on /mnt/persist, because
+# /mnt/app is read-only), or next to this script when it runs on its own
 DATA="$PKG"
 if [ -n "$PATCHER_DATA" ]; then
 	DATA="$PATCHER_DATA/JOKERBTN"
 	mkdir -p "$DATA" 2> /dev/null
 fi
-LOG="$DATA/jokerbtn.log"
+# The log goes to the log folder patcher.sh passes (on the SD card when one is in)
+LOGS="$DATA"
+if [ -n "$PATCHER_LOGS" ]; then
+	LOGS="$PATCHER_LOGS/JOKERBTN"
+	mkdir -p "$LOGS" 2> /dev/null
+fi
+LOG="$LOGS/jokerbtn.log"
 
 # GEM scripts see the SD card read-only, the M.I.B. launcher remounts it the same way
 case "$PKG" in

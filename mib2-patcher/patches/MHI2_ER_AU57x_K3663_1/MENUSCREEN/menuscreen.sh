@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# MENUSCREEN v0.2.0 - a MENU tile that opens a custom screen (prototype)
+# MENUSCREEN v0.2.1 - a MENU tile that opens a custom screen (prototype)
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
 # Usage: menuscreen.sh <command> [-force]
@@ -20,7 +20,7 @@
 # (mod/command.sh) or from the MENUSCREEN GEM screen. Reboot the MMI after
 # install, uninstall and restore.
 
-VERSION="0.2.0"
+VERSION="0.2.1"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
@@ -34,14 +34,20 @@ case "$PKG" in
 esac
 SD_ROOT="${PKG%/*/*/*/*}"
 
-# Logs and the lsd.sh copy go to the folder patcher.sh passes (on /mnt/persist,
-# because /mnt/app is read-only), or next to this script when it runs on its own
+# The lsd.sh copy goes to the folder patcher.sh passes (on /mnt/persist, because
+# /mnt/app is read-only), or next to this script when it runs on its own
 DATA="$PKG"
 if [ -n "$PATCHER_DATA" ]; then
 	DATA="$PATCHER_DATA/MENUSCREEN"
 	mkdir -p "$DATA" 2> /dev/null
 fi
-LOG="$DATA/menuscreen.log"
+# The log goes to the log folder patcher.sh passes (on the SD card when one is in)
+LOGS="$DATA"
+if [ -n "$PATCHER_LOGS" ]; then
+	LOGS="$PATCHER_LOGS/MENUSCREEN"
+	mkdir -p "$LOGS" 2> /dev/null
+fi
+LOG="$LOGS/menuscreen.log"
 
 # GEM scripts see the SD card read-only, the M.I.B. launcher remounts it the same way
 case "$PKG" in
@@ -74,7 +80,7 @@ DEFAULT_SLOT="online"
 # Written by the patched classes on the MMX
 SCREEN_LOG="$PERSIST/menuscreen.log"
 # Copy of the patch log next to the installer log, made by status and uninstall
-SCREEN_LOG_COPY="$DATA/menuscreen-unit.log"
+SCREEN_LOG_COPY="$LOGS/menuscreen-unit.log"
 
 # sha1 of lsd.jxe on MHI2_ER_AU57x_K3663_1 (MU1425), the firmware the patch was built from
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
