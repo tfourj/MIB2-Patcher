@@ -7,9 +7,10 @@
 #
 # Usage: patcher.sh [-force] <action> [<action>...]
 #        patcher.sh [-force] <PATCH> <command> [args...]
-#   update        copy MIB2-Patcher to the unit if the card has a newer version,
-#                 then add the GEM screens and reinstall the patches that are installed
-#   update-force  the same, also when the card has the same or an older version
+#   update        copy MIB2-Patcher to the unit if the card has a newer patcher or patch
+#                 and nothing older, then add the GEM screens and reinstall the patches
+#                 that are installed
+#   update-force  the same, also when nothing on the card is newer or something is older
 #   status        show the version, the train and the status of every patch
 #   install       install every patch of the train
 #   uninstall     uninstall every patch and remove MIB2-Patcher from the unit
@@ -251,11 +252,52 @@ patch_names() {
 	done
 }
 
-# The installer is the .sh file in the patch folder (jokerbtn.sh, tel2acp.sh, ...)
-patch_installer() {
-	for f in "$PATCHES/$TRAIN/$1"/*.sh; do
+# The installer is the .sh file in a patch folder (jokerbtn.sh, tel2acp.sh, ...)
+installer_in() {
+	for f in "$1"/*.sh; do
 		if [ -f "$f" ]; then echo "$f"; return 0; fi
 	done
+	return 1
+}
+
+patch_installer() {
+	installer_in "$PATCHES/$TRAIN/$1"
+}
+
+# Logs one part whose version differs between the card ($2) and the unit ($3)
+# and counts it in card_newer or card_older
+compare_part() {
+	cv=$(read_version "$2")
+	uv=$(read_version "$3")
+	[ -n "$cv" ] || return 0
+	if [ -z "$uv" ]; then
+		log "newer:      $1 $cv on the card, not on the unit"
+		card_newer=1
+	elif version_gt "$cv" "$uv"; then
+		log "newer:      $1 $cv on the card, $uv on the unit"
+		card_newer=1
+	elif version_gt "$uv" "$cv"; then
+		log "older:      $1 $cv on the card, $uv on the unit"
+		card_older=1
+	fi
+}
+
+# Compares the patcher and the patches of the unit's train on the card ($1) with
+# the copy on the unit. Returns 0 when something is newer and nothing older,
+# 1 when nothing is newer, 2 when something is older (only Force update installs that)
+compare_card() {
+	card_newer=0
+	card_older=0
+	compare_part MIB2-Patcher "$1/patcher.sh" "$UNIT_DIR/patcher.sh"
+	unit_train=$(cat "$UNIT_DIR/train" 2> /dev/null)
+	if [ -n "$unit_train" ]; then
+		for d in "$1/patches/$unit_train"/*; do
+			[ -d "$d" ] || continue
+			compare_part "${d##*/}" "$(installer_in "$d")" "$(installer_in "$PATCHES/$unit_train/${d##*/}")"
+		done
+	fi
+	[ $card_older = 1 ] && return 2
+	[ $card_newer = 1 ] && return 0
 	return 1
 }
 
@@ -326,9 +368,19 @@ do_update() {
 	[ -n "$new" ] || die "$src/patcher.sh has no version"
 	log "on the unit: ${old:-none}"
 	log "on the card: $new"
-	if [ -n "$old" ] && [ "$force" != 1 ] && ! version_gt "$new" "$old"; then
-		log "no update, the card is not newer. Use Force update to install $new anyway"
-		return 0
+	# An update needs a newer patcher or patch on the card, and nothing older
+	if [ -n "$old" ] && [ "$force" != 1 ]; then
+		compare_card "$src"
+		case $? in
+			1)
+				log "no update, nothing on the card is newer. Use Force update to install it anyway"
+				return 0
+				;;
+			2)
+				log "no update, the card has an older version of a part. Use Force update to install it anyway"
+				return 0
+				;;
+		esac
 	fi
 	check_not_busy
 
@@ -413,12 +465,12 @@ do_status() {
 	log "== status (MIB2-Patcher $VERSION, $TRAIN)"
 	if has_gem_link; then log "GEM screen: on"; else log "GEM screen: off"; fi
 	if src=$(find_card); then
-		v=$(read_version "$src/patcher.sh")
-		if version_gt "$v" "$VERSION"; then
-			log "update:     $v on ${src%/*}, run Update"
-		else
-			log "update:     none ($v on ${src%/*})"
-		fi
+		compare_card "$src"
+		case $? in
+			0) log "update:     on ${src%/*}, run Update" ;;
+			2) log "update:     ${src%/*} has an older version of a part, only Force update installs it" ;;
+			*) log "update:     none ($(read_version "$src/patcher.sh") on ${src%/*})" ;;
+		esac
 	fi
 	verify_firmware warn
 	run_all status
