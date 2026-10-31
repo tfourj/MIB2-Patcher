@@ -165,6 +165,25 @@ This rebuilds `mib2-patcher/patches/<train>/<patch>/<patch>.jar` and its `.sha1`
 The classes in `stubs/` only stand in for firmware types at compile time and are not included in the jar.
 Set `JXE` to your `lsd.jxe` to also check the jar against the firmware (see [docs/TOOLS.md](docs/TOOLS.md#checkrefspy)).
 
+## Packaging and releases
+
+```bash
+./package.sh
+```
+
+This packages the committed `mib2-patcher` folder and `mod/command.sh` as `build/MIB2-Patcher-v<version>.zip`, ready to unzip to the root of the SD card.
+It checks every jar against its `.sha1` and that no script has CRLF line endings.
+
+GitHub Actions runs it on every push and from **Run workflow**, and uploads the card layout as an artifact named `MIB2-Patcher-v<version>-<commit>`.
+To publish a release, bump `VERSION` in `patcher.sh` and push a matching tag:
+
+```bash
+git tag v1.2.1
+git push origin v1.2.1
+```
+
+The workflow stops if the tag doesn't match `VERSION`.
+
 ## Adding a train
 
 1. Make a folder `mib2-patcher/patches/<train>` with the train name M.I.B. shows, e.g. `MHI2_ER_AU57x_K3663_1`.
