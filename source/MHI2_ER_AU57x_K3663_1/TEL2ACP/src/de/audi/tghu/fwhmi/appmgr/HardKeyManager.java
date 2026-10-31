@@ -23,6 +23,8 @@ import de.audi.atip.log.LogChannel;
  * depends on the mode in /mnt/persist/tel2acp_mode (see handleTelKey).
  * When TEL opens CarPlay it also lights the TEL key, because the terminal
  * mode state never sets a key light itself.
+ * NAV, RADIO and MEDIA can open CarPlay Maps, Music and Now Playing while
+ * CarPlay is on screen, each turned on in its own key file (see handleCarPlayKey).
  *
  * Loaded ahead of lsd.jxe with -Xbootclasspath/p:, so fields and method
  * signatures must stay identical to the original class.
@@ -86,6 +88,12 @@ public class HardKeyManager {
     // CarPlay screen the custom mode opens, written by "tel2acp.sh custom-*". Phone when not set
     private static final String CUSTOM_FILE = "/mnt/persist/tel2acp_custom";
 
+    // Keys that open a CarPlay screen while CarPlay is on screen, written by "tel2acp.sh <key>-on".
+    // "on" turns a key on, no file means the stock event
+    private static final String KEY_FILE_NAV = "/mnt/persist/tel2acp_key_nav";
+    private static final String KEY_FILE_RADIO = "/mnt/persist/tel2acp_key_radio";
+    private static final String KEY_FILE_MEDIA = "/mnt/persist/tel2acp_key_media";
+
     // Original log channel level and message ids
     private static final int LOG_LEVEL = 1000000;
     private static final int LOG_KEY_15 = 1264;
@@ -113,10 +121,10 @@ public class HardKeyManager {
     public void triggerKeyEvent(int terminalId, int key) {
         switch (key) {
             case 1:
-                fireSMEvent(terminalId, HK_TUNER);
+                handleCarPlayKey(terminalId, HK_TUNER, KEY_FILE_RADIO, CARPLAY_UI_MEDIA);
                 break;
             case 2:
-                fireSMEvent(terminalId, HK_MEDIA);
+                handleCarPlayKey(terminalId, HK_MEDIA, KEY_FILE_MEDIA, CARPLAY_UI_MEDIA_NOWPLAYING);
                 break;
             case 3:
                 fireSMEvent(terminalId, HK_NET);
@@ -125,7 +133,7 @@ public class HardKeyManager {
                 handleTelKey(terminalId);
                 break;
             case 5:
-                fireSMEvent(terminalId, HK_NAV);
+                handleCarPlayKey(terminalId, HK_NAV, KEY_FILE_NAV, CARPLAY_UI_NAVIGATION);
                 break;
             case 6:
                 fireSMEvent(terminalId, HK_INFO);
@@ -205,6 +213,28 @@ public class HardKeyManager {
             return;
         }
         fireSMEvent(terminalId, HK_TEL);
+    }
+
+    /**
+     * NAV, RADIO and MEDIA: while CarPlay is on screen and the key file is "on", the key
+     * opens a CarPlay screen on the iPhone. Otherwise, or when that isn't possible, it
+     * fires the stock event. The key light is left as it is, CarPlay stays on screen.
+     */
+    private void handleCarPlayKey(int terminalId, int event, String keyFile, int ui) {
+        if (readSetting(keyFile).equals("on") && isTerminalModeShown() && openCarPlayUi(ui)) {
+            return;
+        }
+        fireSMEvent(terminalId, event);
+    }
+
+    /** True while a CarPlay / terminal mode screen is shown. Never throws. */
+    private boolean isTerminalModeShown() {
+        try {
+            return getHmiService().getCurrentScreenID() / SCREEN_APP_DIVISOR == TERMINAL_MODE_APP_ID;
+        } catch (Throwable t) {
+            // Keep the stock key
+            return false;
+        }
     }
 
     /** The TEL mode from the mode file. Missing or unknown means tel. */
