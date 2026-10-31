@@ -15,11 +15,14 @@
 #   mode-carplay  CarPlay only: TEL again on CarPlay does nothing
 #   mode-custom   CarPlay / CarPlay Custom: TEL again on CarPlay opens CarPlay Custom
 #   custom-<ui>   set CarPlay Custom: phone (default), home, maps, music or nowplaying
+#   <key>-on      while CarPlay is on screen, nav opens CarPlay Maps, radio Music
+#                 and media Now Playing
+#   <key>-off     the key works as before (default)
 #   -force        install even if the firmware fingerprint does not match
 #
 # Runs on the MMI (QNX). Start it over SSH, from the M.I.B. launcher hook
 # (mod/command.sh) or from the TEL2ACP GEM screen. Reboot the MMI after
-# install, uninstall and restore. The mode-* and custom-* commands work right away.
+# install, uninstall and restore. The mode-*, custom-* and <key>-* commands work right away.
 
 VERSION="1.2.1"
 
@@ -81,6 +84,10 @@ FLAG_DISABLED="$PERSIST/tel2acp_disabled"
 # CarPlay Custom screen. The patched class reads both at every TEL press
 MODE_FILE="$PERSIST/tel2acp_mode"
 CUSTOM_FILE="$PERSIST/tel2acp_custom"
+# NAV, RADIO and MEDIA open a CarPlay screen while CarPlay is on screen when
+# their file says "on" (tel2acp_key_nav, ...). The patched class reads it at every press
+KEY_FILE="$PERSIST/tel2acp_key"
+KEYS="nav radio media"
 
 # sha1 of lsd.jxe on MHI2_ER_AU57x_K3663_1 (MU1425), the firmware the patch was built from
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
@@ -235,6 +242,40 @@ custom_text() {
 		music) echo "Music" ;;
 		nowplaying) echo "Now Playing" ;;
 	esac
+}
+
+# on or off
+key_state() {
+	if [ "$(cat "${KEY_FILE}_$1" 2> /dev/null)" = on ]; then echo on; else echo off; fi
+}
+
+# The key name, empty for an unknown key
+key_text() {
+	case "$1" in
+		nav) echo "NAV" ;;
+		radio) echo "RADIO" ;;
+		media) echo "MEDIA" ;;
+	esac
+}
+
+# The CarPlay screen a key opens when it is on
+key_screen() {
+	case "$1" in
+		nav) echo "Maps" ;;
+		radio) echo "Music" ;;
+		media) echo "Now Playing" ;;
+	esac
+}
+
+# What a key does while CarPlay is on screen
+key_status() {
+	if [ "$(key_state "$1")" = on ]; then echo "CarPlay $(key_screen "$1")"; else echo "as before"; fi
+}
+
+clear_keys() {
+	for k in $KEYS; do
+		rm -f "${KEY_FILE}_$k" 2> /dev/null
+	done
 }
 
 # The block added in front of the J9 start line in lsd.sh. It runs on the MMX
@@ -416,6 +457,7 @@ do_uninstall() {
 	remove_gem_link
 	clear_flags
 	rm -f "$MODE_FILE" "$CUSTOM_FILE" 2> /dev/null
+	clear_keys
 	mount_ro
 	log "done, reboot the MMI to deactivate"
 }
@@ -432,6 +474,7 @@ do_restore() {
 	remove_gem_link
 	clear_flags
 	rm -f "$MODE_FILE" "$CUSTOM_FILE" 2> /dev/null
+	clear_keys
 	mount_ro
 	log "done, reboot the MMI"
 }
@@ -460,6 +503,9 @@ do_status() {
 	fi
 	log "TEL mode:   $(mode_text "$(current_mode)")"
 	log "custom:     CarPlay $(custom_text "$(current_custom)")"
+	log "NAV:        $(key_status nav)"
+	log "RADIO:      $(key_status radio)"
+	log "MEDIA:      $(key_status media)"
 	if [ -f "$LSD_BAK" ]; then log "backup:     $LSD_BAK"; else log "backup:     none"; fi
 	if [ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ]; then log "GEM screen: on"; else log "GEM screen: off"; fi
 
@@ -504,6 +550,30 @@ do_custom() {
 	[ "$(current_mode)" = custom ] || log "TEL mode is $(mode_text "$(current_mode)"), set CarPlay / CarPlay Custom to use it"
 }
 
+do_key() {
+	key="${1%%-*}"
+	state="${1#*-}"
+	log "== $1"
+	[ -n "$(key_text "$key")" ] || die "unknown key '$key'"
+	case "$state" in
+		on|off) ;;
+		*) die "unknown setting '$state', use $key-on or $key-off" ;;
+	esac
+	[ -d "$PERSIST" ] || die "$PERSIST not found"
+	if [ "$state" = off ]; then
+		rm -f "${KEY_FILE}_$key" 2> /dev/null
+	else
+		( echo on > "${KEY_FILE}_$key" ) 2> /dev/null || die "could not write ${KEY_FILE}_$key"
+	fi
+	[ "$(key_state "$key")" = "$state" ] || die "could not set the $(key_text "$key") key"
+	refresh_marks
+	if [ "$state" = on ]; then
+		log "$(key_text "$key") opens CarPlay $(key_screen "$key") while CarPlay is on screen, no reboot needed"
+	else
+		log "$(key_text "$key") works as before, no reboot needed"
+	fi
+}
+
 do_gem_on() {
 	log "== gem-on"
 	[ -f "$ESD_SRC" ] || die "$ESD_SRC is missing on the SD card"
@@ -537,11 +607,13 @@ case "$cmd" in
 	gem-off) do_gem_off ;;
 	mode-*) do_mode "${cmd#mode-}" ;;
 	custom-*) do_custom "${cmd#custom-}" ;;
+	nav-*|radio-*|media-*) do_key "$cmd" ;;
 	*)
 		echo "TEL2ACP $VERSION"
 		echo "Usage: $0 install [-force] | uninstall | restore | status | gem-on | gem-off"
 		echo "       $0 mode-tel | mode-carplay | mode-custom"
 		echo "       $0 custom-phone | custom-home | custom-maps | custom-music | custom-nowplaying"
+		echo "       $0 nav-on | nav-off | radio-on | radio-off | media-on | media-off"
 		exit 1
 		;;
 esac
