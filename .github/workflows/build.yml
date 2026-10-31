@@ -1,0 +1,56 @@
+# Builds the SD card zip with package.sh.
+# Every push and manual run uploads it as a workflow artifact for testing.
+# A v* tag (like v1.2.1, matching VERSION in patcher.sh) also publishes it as a GitHub release.
+name: Build SD card zip
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Pick the zip name
+        id: name
+        run: |
+          version=$(sed -n 's/^VERSION="\(.*\)"$/\1/p' mib2-patcher/patcher.sh | head -n 1)
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+              echo "::error::tag $GITHUB_REF_NAME does not match VERSION=\"$version\" in mib2-patcher/patcher.sh"
+              exit 1
+            fi
+            name="MIB2-Patcher-$GITHUB_REF_NAME"
+          else
+            name="MIB2-Patcher-v$version-${GITHUB_SHA::7}"
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Package
+        run: bash package.sh "${{ steps.name.outputs.name }}"
+
+      # The artifact download is a zip of build/sdcard, so it has the card layout too
+      - name: Upload test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.name.outputs.name }}
+          path: build/sdcard/
+          if-no-files-found: error
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ZIP: build/${{ steps.name.outputs.name }}.zip
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$ZIP" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$ZIP" --title "MIB2-Patcher $GITHUB_REF_NAME" --generate-notes
+          fi

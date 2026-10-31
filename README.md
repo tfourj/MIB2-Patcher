@@ -151,6 +151,7 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
 | `tools/jxe/` | Python tools for reading the firmware, see [docs/TOOLS.md](docs/TOOLS.md) |
 | `build.sh` | Builds a patch jar |
 | `package.sh` | Packages the SD card zip |
+| `.github/workflows/build.yml` | Builds the SD card zip on every push and publishes it on `v*` tags |
 
 ## Build from source
 
