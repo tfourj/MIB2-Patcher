@@ -72,6 +72,9 @@ ESD_LINK="$HMI/engdefs/z_mib2patcher_TEL2ACP.esd"
 # Set_CarPlay_Custom submenu. Sorts after z_mib2patcher_TEL2ACP.esd, so its parent screen exists first
 ESD_CUSTOM_SRC="$PKG/esd/TEL2ACP_custom.esd"
 ESD_CUSTOM_LINK="$HMI/engdefs/z_mib2patcher_TEL2ACP_custom.esd"
+# Set_CarPlay_Keys submenu, also sorts after z_mib2patcher_TEL2ACP.esd
+ESD_KEYS_SRC="$PKG/esd/TEL2ACP_keys.esd"
+ESD_KEYS_LINK="$HMI/engdefs/z_mib2patcher_TEL2ACP_keys.esd"
 MARKER="#TEL2ACP"
 
 # Boot guard flags. lsd.sh and the patched class see /mnt/persist on the MMX
@@ -337,9 +340,11 @@ remove_patch_lines() {
 }
 
 remove_gem_link() {
-	if [ -L "$ESD_CUSTOM_LINK" ] || [ -f "$ESD_CUSTOM_LINK" ]; then
-		rm -f "$ESD_CUSTOM_LINK" 2> /dev/null || on -f mmx rm -f "$ESD_CUSTOM_LINK" 2> /dev/null
-	fi
+	for link in "$ESD_CUSTOM_LINK" "$ESD_KEYS_LINK"; do
+		if [ -L "$link" ] || [ -f "$link" ]; then
+			rm -f "$link" 2> /dev/null || on -f mmx rm -f "$link" 2> /dev/null
+		fi
+	done
 	if [ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ]; then
 		rm -f "$ESD_LINK" 2> /dev/null || on -f mmx rm -f "$ESD_LINK" 2> /dev/null
 		log "GEM screen removed"
@@ -389,7 +394,10 @@ refresh_marks() {
 	mount_rw
 	{
 		mark_esd "$ESD_SRC" mode "$(current_mode)" &&
-		mark_esd "$ESD_CUSTOM_SRC" custom "$(current_custom)"
+		mark_esd "$ESD_CUSTOM_SRC" custom "$(current_custom)" &&
+		mark_esd "$ESD_KEYS_SRC" nav "$(key_state nav)" &&
+		mark_esd "$ESD_KEYS_SRC" radio "$(key_state radio)" &&
+		mark_esd "$ESD_KEYS_SRC" media "$(key_state media)"
 	} 2> /dev/null
 	rc=$?
 	mount_ro
@@ -578,13 +586,16 @@ do_gem_on() {
 	log "== gem-on"
 	[ -f "$ESD_SRC" ] || die "$ESD_SRC is missing on the SD card"
 	[ -f "$ESD_CUSTOM_SRC" ] || die "$ESD_CUSTOM_SRC is missing on the SD card"
+	[ -f "$ESD_KEYS_SRC" ] || die "$ESD_KEYS_SRC is missing on the SD card"
 	refresh_marks
 	mount_rw
 	link_esd "$ESD_SRC" "$ESD_LINK"
 	link_esd "$ESD_CUSTOM_SRC" "$ESD_CUSTOM_LINK"
+	link_esd "$ESD_KEYS_SRC" "$ESD_KEYS_LINK"
 	mount_ro
 	[ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ] || die "could not link $ESD_LINK"
 	[ -L "$ESD_CUSTOM_LINK" ] || [ -f "$ESD_CUSTOM_LINK" ] || die "could not link $ESD_CUSTOM_LINK"
+	[ -L "$ESD_KEYS_LINK" ] || [ -f "$ESD_KEYS_LINK" ] || die "could not link $ESD_KEYS_LINK"
 	log "GEM screen added, it shows up after the next reboot"
 }
 

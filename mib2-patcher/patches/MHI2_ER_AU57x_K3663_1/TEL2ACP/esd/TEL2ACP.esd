@@ -3,7 +3,7 @@
 # Linked into /eso/hmi/engdefs by "tel2acp.sh gem-on"
 # Runs from the copy on the unit (/mnt/app/eso/mib2-patcher), no SD card needed
 # [x] marks the selected mode, tel2acp.sh rewrites them
-# The Set_CarPlay_Custom submenu is in TEL2ACP_custom.esd
+# The Set_CarPlay_Custom submenu is in TEL2ACP_custom.esd, Set_CarPlay_Keys in TEL2ACP_keys.esd
 #---------------------------------------------------------------------
 screen   TEL2ACP MIB2_Patcher
 

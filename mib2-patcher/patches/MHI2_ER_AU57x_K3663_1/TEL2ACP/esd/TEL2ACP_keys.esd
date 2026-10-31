@@ -1,0 +1,36 @@
+#---------------------------------------------------------------------
+# TEL2ACP - CarPlay keys: NAV, RADIO and MEDIA open CarPlay Maps, Music
+# and Now Playing while CarPlay is on screen
+# Submenu of the TEL2ACP screen, linked into /eso/hmi/engdefs by "tel2acp.sh gem-on"
+# Runs from the copy on the unit (/mnt/app/eso/mib2-patcher), no SD card needed
+# [x] marks the selected setting of each key, tel2acp.sh rewrites them
+#---------------------------------------------------------------------
+screen   Set_CarPlay_Keys TEL2ACP
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/status.sh"
+   label    "Show current setting"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/nav-off.sh"
+   label    "[x] NAV in CarPlay: Navigation"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/nav-on.sh"
+   label    "[ ] NAV in CarPlay: CarPlay Maps"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/radio-off.sh"
+   label    "[x] RADIO in CarPlay: Radio"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/radio-on.sh"
+   label    "[ ] RADIO in CarPlay: CarPlay Music"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/media-off.sh"
+   label    "[x] MEDIA in CarPlay: Media"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TEL2ACP/esd/media-on.sh"
+   label    "[ ] MEDIA in CarPlay: CarPlay Now Playing"
