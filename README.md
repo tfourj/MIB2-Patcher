@@ -51,13 +51,13 @@ The GEM screens run from there, so the SD card isn't needed any more.
 
 1. Copy the new `mib2-patcher` folder to the root of an SD card or USB stick. It doesn't need M.I.B. on it.
 2. Put it in SD1, SD2 or the USB port and open GEM → MIB2_Patcher.
-3. Run **Update from SD card**. It only updates when the card has a newer version, and shows both versions.
-   **Force update from SD card** installs the card's version even if it is the same or older, for example to repair the copy on the unit.
+3. Run **Update from SD card**. It only updates when the card has a newer patcher or patch and nothing older, and shows the versions that differ.
+   **Force update from SD card** installs the card's version anyway, for example to repair the copy on the unit.
 4. Reboot the MMI.
 
 An update keeps the patch settings. It reinstalls every patch that is installed, so new jars take effect, and uninstalls installed patches the new version no longer has.
 Reinstalling also re-arms a patch that its boot guard turned off. The previous version stays in `/mnt/app/eso/mib2-patcher.old` until the next update.
-**Status of all patches** says when the card has a newer version.
+**Status of all patches** says when the card has a newer patcher or patch.
 
 ## Logs
 
@@ -88,8 +88,8 @@ on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh <command>
 
 | Command | Does |
 |---|---|
-| `update` | Copy MIB2-Patcher from the card to the unit if the card has a newer version, add the GEM screens and reinstall the installed patches |
-| `update-force` | The same, also when the card has the same or an older version |
+| `update` | Copy MIB2-Patcher from the card to the unit if the card has a newer patcher or patch and nothing older, add the GEM screens and reinstall the installed patches |
+| `update-force` | The same, also when nothing on the card is newer or something is older |
 | `train` | Show the train the patcher picked |
 | `status` | Show the train and the status of every patch |
 | `install` | Install every patch of the train |
@@ -176,13 +176,14 @@ Set `JXE` to your `lsd.jxe` to also check the jar against the firmware (see [doc
 A patch is a folder in `mib2-patcher/patches/<train>/` with one installer `.sh` file. The patcher calls it with
 `install`, `uninstall`, `status`, `gem-on` and `gem-off`, and passes anything else on from `patcher.sh <PATCH> ...`.
 
+- It sets `VERSION="..."` in its installer. Bump it with every change to the patch, so **Update from SD card** sees it.
 - It marks its `lsd.sh` lines with `#<PATCH>`, which is how `update` sees that it is installed.
 - It writes its log to `$PATCHER_LOGS/<PATCH>` and its backups to `$PATCHER_DATA/<PATCH>` when the patcher sets them,
   because its own folder on the unit is read-only.
 - Its main GEM screen uses `MIB2_Patcher` as parent and is linked into `/eso/hmi/engdefs` as `z_mib2patcher_<PATCH>.esd`,
   so it sorts after the MIB2_Patcher screen.
 - Its GEM entries run `patcher.sh <PATCH> <command>` from `/net/mmx/mnt/app/eso/mib2-patcher`.
-- Bump `VERSION` in `patcher.sh` with every release, so **Update from SD card** sees the new version.
+- Bump `VERSION` in `patcher.sh` only when the patcher itself changes.
 
 ## Credits
 
