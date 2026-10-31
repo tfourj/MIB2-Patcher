@@ -6,6 +6,7 @@ Makes the **TEL** button on an Audi MHI2 MMI open **Apple CarPlay** (or Android 
 |---|---|---|
 | TEL | Phone menu | CarPlay, with the TEL key lit |
 | TEL while CarPlay is on screen | Phone menu | Depends on the [TEL mode](#tel-modes), phone menu by default |
+| NAV, RADIO, MEDIA while CarPlay is on screen | Their own menu | CarPlay Maps, Music, Now Playing when turned on in [CarPlay keys](#carplay-keys) |
 
 All other buttons work as before. The TEL light only follows CarPlay when TEL opened it, not when CarPlay is opened from MENU or by the phone.
 
@@ -27,8 +28,8 @@ All other buttons work as before. The TEL light only follows CarPlay when TEL op
 |---|---|
 | `TEL2ACP.jar` | The patched `HardKeyManager` class |
 | `TEL2ACP.jar.sha1` | Checksum the installer uses to spot a damaged copy |
-| `tel2acp.sh` | Installer: `install`, `uninstall`, `restore`, `status`, `gem-on`, `gem-off`, `mode-*`, `custom-*` |
-| `esd/` | GEM screen with Status, TEL mode, Install, Uninstall and Restore buttons, and a Set CarPlay Custom submenu |
+| `tel2acp.sh` | Installer: `install`, `uninstall`, `restore`, `status`, `gem-on`, `gem-off`, `mode-*`, `custom-*`, `<key>-on`, `<key>-off` |
+| `esd/` | GEM screen with Status, TEL mode, Install, Uninstall and Restore buttons, and Set CarPlay Custom and Set CarPlay Keys submenus |
 
 ## Install
 
@@ -84,6 +85,22 @@ GEM may only show a new `[x]` after an MMI reboot; Status is always up to date.
 The 1.1.0 `mode-phone` setting carries over as CarPlay / CarPlay Custom with Phone.
 
 In the CarPlay Custom mode, TEL opens the phone menu instead when Android Auto is on screen or no CarPlay phone is connected.
+
+## CarPlay keys
+
+NAV, RADIO and MEDIA can also open a CarPlay screen while CarPlay is on screen. Each key is turned on by itself, all are off by default.
+Set them in GEM → MIB2_Patcher → TEL2ACP → Set_CarPlay_Keys:
+
+| Key | GEM button | Command | Opens in CarPlay |
+|---|---|---|---|
+| NAV | NAV in CarPlay: CarPlay Maps | `nav-on` | Maps app |
+| RADIO | RADIO in CarPlay: CarPlay Music | `radio-on` | Music app |
+| MEDIA | MEDIA in CarPlay: CarPlay Now Playing | `media-on` | Now Playing screen |
+
+`nav-off`, `radio-off` and `media-off` (the other GEM buttons) turn a key back to its own menu.
+Like the TEL modes, they work over SSH or in `mod/command.sh` and apply from the next key press. `status` shows them.
+
+When CarPlay isn't on screen, Android Auto is on screen or no CarPlay phone is connected, the keys open their own menu as before.
 
 ## Using it together with JOKERBTN
 
@@ -142,7 +159,8 @@ See [Setting up SSH](../../README.md#setting-up-ssh) in the main README.
   If another mod (like the JOKERBTN patch) already uses `-Xbootclasspath/p:`, TEL2ACP joins that list instead of adding a second option, so both work.
 - Uses three small flag files in `/mnt/persist` (`tel2acp_pending`, `tel2acp_loaded`, `tel2acp_disabled`).
   The TEL mode is stored in `/mnt/persist/tel2acp_mode` (no file means TEL / CarPlay),
-  CarPlay Custom in `/mnt/persist/tel2acp_custom` (no file means Phone).
+  CarPlay Custom in `/mnt/persist/tel2acp_custom` (no file means Phone),
+  the CarPlay keys in `/mnt/persist/tel2acp_key_nav`, `tel2acp_key_radio` and `tel2acp_key_media` (no file means off).
 - Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `/mnt/persist/mib2-patcher/TEL2ACP/backup/lsd.sh`.
 
 `-force` installs anyway when the firmware doesn't match or no `sha1sum` tool is found. A damaged jar is never installed.
@@ -164,6 +182,7 @@ Every hard key goes through `de.audi.tghu.fwhmi.appmgr.HardKeyManager.triggerKey
 The patched class fires `SWITCH_TO_TERMINAL_MODE` (1903) instead. The firmware already uses that event when a connected phone takes over the screen.
 If a CarPlay screen (240000–240009) is already showing, the [TEL mode](#tel-modes) decides:
 `HK_TEL` as before, nothing, or `DSICarplay.requestUI(...)`, which asks the iPhone to show the CarPlay Custom screen.
+The [CarPlay keys](#carplay-keys) send the same `requestUI(...)` for NAV, RADIO and MEDIA instead of their own events.
 After opening CarPlay it lights the TEL key through `KbdService.setHKIlluminationExclusive`, the same call the phone screen uses.
 
 Full analysis: [FINDINGS.md](FINDINGS.md).

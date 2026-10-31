@@ -76,7 +76,8 @@ MIB2_Patcher           Status, Update, Force update, Install all, Uninstall ever
 │   └── Voice_button
 ├── MENUSCREEN         Status, Install, Uninstall, Restore, tile slot
 └── TEL2ACP            Status, TEL modes, Install, Uninstall, Restore
-    └── Set_CarPlay_Custom
+    ├── Set_CarPlay_Custom
+    └── Set_CarPlay_Keys
 ```
 
 ## patcher.sh

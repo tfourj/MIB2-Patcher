@@ -170,6 +170,14 @@ CarPlay and Android Auto share screen 240000, so the screen id can't tell them a
 2 for Android Auto, 3 for others and 0 when none is active. The patch only sends `requestUI` when it is 1,
 and fires `HK_TEL` when it isn't or when anything throws.
 
+### CarPlay keys
+
+NAV (`key == 5`, `HK_NAV`), RADIO (`key == 1`, `HK_TUNER`) and MEDIA (`key == 2`, `HK_MEDIA`) go through the same `triggerKeyEvent`.
+When `/mnt/persist/tel2acp_key_nav`, `tel2acp_key_radio` or `tel2acp_key_media` says `on`, a terminal mode screen is shown and the active device is CarPlay,
+the key sends `requestUI` with `UI_NAVIGATION`, `UI_MEDIA` or `UI_MEDIA_NOWPLAYING` instead of its event. Otherwise it fires its event as before.
+The key file is read first, so a key that is off runs the original code path.
+The key light is left alone: CarPlay stays on screen, and lighting NAV or MEDIA would suggest the native app.
+
 Build notes:
 
 - It is compiled against stub classes for `IFrameworkAccess`, `HMIService`, `KbdService`, `ButtonModel` and `LogChannel` (only the signatures used).
@@ -205,7 +213,8 @@ Build notes:
   and `TerminalModeScreenFactory.createScreen()`, which builds screens 240000 (CarPlay/AA view) to 240009 (240002 is "no device").
   It has not been seen on a running unit yet.
 - CarPlay Custom with Phone works on the car. Home, Maps, Music and Now Playing use the same call with other `UI_*` values
-  and have not been tested yet.
+  and have not been tested yet. The CarPlay keys use those same values and have not been tested on the car yet either.
+- The Set_CarPlay_Keys GEM submenu (`TEL2ACP_keys.esd`) has not been seen on the car yet.
 - The Set_CarPlay_Custom GEM submenu (`screen Set_CarPlay_Custom TEL2ACP` in its own esd file) has not been seen on the car yet.
   If it doesn't show up, the `custom-*` commands still work over SSH or `mod/command.sh`.
   GEM decides where the submenu sits in the TEL2ACP screen; the esd file has no way to place it.
