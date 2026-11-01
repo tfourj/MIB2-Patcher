@@ -27,6 +27,8 @@ extern int fprintf(FILE *file, const char *format, ...);
 extern int fflush(FILE *file);
 extern int fclose(FILE *file);
 extern int usleep(u32 microseconds);
+extern int pthread_create(int *thread, const void *attributes, void *(*start)(void *), void *argument);
+extern int pthread_detach(int thread);
 
 /* cpkstream.c: live streaming to the cluster */
 extern __attribute__((visibility("hidden"))) int cpkstream_active(void);
@@ -63,10 +65,15 @@ extern __attribute__((visibility("hidden"))) void cpkstream_frame(const u8 *data
 /* How long to wait for the encoder's output of the frame just fed, polling */
 #define DRAIN_WAIT_US 30000
 #define DRAIN_POLL_US 2000
+/*
+ * The cluster shows a frame only when the next one arrives. When CarPlay sends nothing
+ * for this long, the last picture is encoded again (a tiny frame, nothing changed)
+ */
+#define REPEAT_US 33000
 
 #define LOG(...) \
 	do { \
-		if (log_lines < LOG_MAX_LINES) { \
+		if (log_file && log_lines < LOG_MAX_LINES) { \
 			log_lines++; \
 			fprintf(log_file, __VA_ARGS__); \
 		} \
@@ -251,6 +258,72 @@ static void stop(void)
 	log_file = 0;
 }
 
+/* The render thread and the repeater both use the encoder: one at a time */
+static volatile int encoder_busy;
+
+static void lock(void)
+{
+	while (__sync_lock_test_and_set(&encoder_busy, 1))
+		usleep(500);
+}
+
+static void unlock(void)
+{
+	__sync_lock_release(&encoder_busy);
+}
+
+/* Encodes what is in rgba and hands the output on. Call with the lock held */
+static void encode_and_send(int recording, int streaming)
+{
+	int status;
+
+	/* Bit 0: IDR with SPS and PPS, for the first frame, a stream start or after a drop */
+	picture_params[0] = frames == 0 || cpkstream_take_keyframe() ? 1 : 0;
+	status = encoder_feed(encoder, rgba, 0, 0, picture_params);
+	if (status != 0 || frames < 5)
+		LOG("frame %u: FeedFrame %d\n", frames, status);
+	if (status == 0)
+		frames_fed++;
+	drain(recording, streaming);
+	frames++;
+}
+
+/*
+ * While streaming, sends the last picture again when CarPlay has sent nothing for
+ * REPEAT_US, so the cluster always gets the next frame that makes it show the last one
+ */
+static void *repeater(void *argument)
+{
+	u32 seen = frames_fed;
+
+	(void)argument;
+	for (;;) {
+		usleep(REPEAT_US);
+		if (!cpkstream_active() || broken) {
+			seen = frames_fed;
+			continue;
+		}
+		lock();
+		if (frames_fed == seen)
+			encode_and_send(0, 1);
+		seen = frames_fed;
+		unlock();
+	}
+	return 0;
+}
+
+static void start_repeater(void)
+{
+	static int started;
+	int thread;
+
+	if (started)
+		return;
+	started = 1;
+	if (pthread_create(&thread, 0, repeater, 0) == 0)
+		pthread_detach(thread);
+}
+
 /* Called with each decoded CarPlay surface, before it goes to the screen. Not exported */
 __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface)
 {
@@ -262,16 +335,22 @@ __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface)
 	int streaming = cpkstream_active();
 	int status;
 
+	lock();
 	if (!recording && !streaming) {
 		stop();
+		unlock();
 		return;
 	}
-	if (broken)
+	if (broken) {
+		unlock();
 		return;
+	}
 	if (!log_file) {
 		log_file = fopen(ENC_LOG, "a");
-		if (!log_file)
+		if (!log_file) {
+			unlock();
 			return;
+		}
 	}
 	if (recording && !video_file) {
 		video_file = fopen(ENC_VIDEO, "ab");
@@ -281,8 +360,11 @@ __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface)
 	if (!encoder && !setup(source)) {
 		broken = 1;
 		fflush(log_file);
+		unlock();
 		return;
 	}
+	if (streaming)
+		start_repeater();
 	if (source[1] < SOURCE_WIDTH || source[2] < SOURCE_HEIGHT) {
 		src.x1 = (u16)source[1];
 		src.y1 = (u16)source[2];
@@ -291,18 +373,10 @@ __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface)
 	status = render_surface(mixer, rgba, 0, &primary, 0, 0, 0);
 	if (status != 0 || frames < 5)
 		LOG("frame %u: RenderSurface %d\n", frames, status);
-	if (status == 0) {
-		/* Bit 0: IDR with SPS and PPS, for the first frame, a stream start or after a drop */
-		picture_params[0] = frames == 0 || cpkstream_take_keyframe() ? 1 : 0;
-		status = encoder_feed(encoder, rgba, 0, 0, picture_params);
-		if (status != 0 || frames < 5)
-			LOG("frame %u: FeedFrame %d\n", frames, status);
-		if (status == 0)
-			frames_fed++;
-	}
-	drain(recording, streaming);
-	frames++;
+	if (status == 0)
+		encode_and_send(recording, streaming);
 	if (video_file)
 		fflush(video_file);
 	fflush(log_file);
+	unlock();
 }
