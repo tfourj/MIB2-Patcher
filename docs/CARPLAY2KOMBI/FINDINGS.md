@@ -148,6 +148,25 @@ The cluster showed a green, glitchy picture, not CarPlay: the composite doesn't 
 Contexts [33, 59] and [59, 33] (CarPlay with the cluster map layer) fail like 77, with the `nvmap` error.
 So `displaymanager` can't encode CarPlay for the cluster; it needs an encoder of our own.
 
+## Hardware transcoding in the hook
+
+[`cpkenc.c`](../../source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native/cpkenc.c) does the scaling and encoding on the Tegra, inside `dio_manager`.
+
+- **Getting the frames.** `libnvss_video` shows each decoded frame with `NvMediaVideoMixerRender(mixer, 1, NULL, &primary, NULL, NULL, NULL, releaseList, timestamp)` (9 arguments).
+  `primary` is 0x1c bytes, with the decoded `NvMediaVideoSurface` at `+8`. The surfaces are YUV 4:2:0 (type 0), 784×480 for CarPlay's 780×468.
+  The call goes through the PLT, so the hook intercepts it.
+- **Scaling.** A second mixer, `NvMediaVideoMixerCreate(dev, 800, 298, aspect, srcW, srcH, 0×6, 0x21000, NULL)`, with surface rendering (`0x20000`) and DVD mode (`0x1000`), renders with `NvMediaVideoMixerRenderSurface` into an RGBA surface (type 4, 800×298).
+  The source rect is `{0,0,780,468}` and the destination `{152,0,648,298}`. The surface starts zeroed, so the sides stay black.
+  NVIDIA's libraries pass floats in integer registers (softfp), so the aspect ratio goes in as its bits.
+- **Encoding.** `NvMediaVideoEncoderCreate(dev, 0, &init, 4 /*RGBA*/, 4, 4, dev)` is the same encoder `libnvvsenc` uses for the map.
+  `init` has 800, 298 at `+0/+4`, 30/1 at `+0x14/+0x18`, 1 at `+0x20` and the config at `+0x30`. The config has the IDR period at `+0`, the bitrate at `+0x20`, and 1, 66 at `+0x80/+0x84`.
+  `NvMediaVideoEncoderFeedFrame(enc, rgba, NULL, NULL, &params)` takes the frame. The params must be zeroed up to at least `+0x48`: `+0x44` is a count and `+0x48` an array pointer, and junk there crashed it.
+  `BitsAvailable` / `GetBits` return the output.
+
+The output is Baseline level 3.0, 800×298, 30 fps, with SPS, PPS and IDR every 15 frames (at 2.4 Mbit/s, about 1.8 Mbit/s in practice), and CarPlay keeps running.
+A 15-second recording of it, packed as TS and sent with `cpkinject`, **plays cleanly on the cluster**.
+What's left is doing that live: the TS muxer and paced writer in the hook, and switching the cluster to context 77 and back.
+
 ## How to repeat the checks
 
 Over SSH on the MMX (see the README for setting up SSH):
@@ -160,7 +179,7 @@ Over SSH on the MMX (see the README for setting up SSH):
 
 ## Open questions
 
-- Whether the cluster decodes High profile at 800×298, or only Baseline.
-- How to get CarPlay frames at 800×298: decoding CarPlay's H.264 on the MMX and encoding it again.
+- Whether the cluster decodes High profile at 800×298, or only Baseline (not needed: the Tegra encoder makes Baseline).
+- Live streaming: keeping the cluster on context 77 while navigation switches it back, and recovering when CarPlay disconnects.
 - Whether the cluster would show a stream that is not map-like, or needs a particular foreground picture type (`setFGLayer`, never called by the HMI).
 - `getDisplayableInfo(59, 4)` exists in the DSI but has no caller; its answer wasn't checked.
