@@ -1,0 +1,22 @@
+#---------------------------------------------------------------------
+# NAVIGNORE - the MMI navigation keeps running when a CarPlay route starts
+# Linked into /eso/hmi/engdefs by "navignore.sh gem-on"
+# Runs from the copy on the unit (/mnt/app/eso/mib2-patcher), no SD card needed
+#---------------------------------------------------------------------
+screen   NAVIGNORE MIB2_Patcher
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/NAVIGNORE/esd/status.sh"
+   label    "Status"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/NAVIGNORE/esd/install.sh"
+   label    "Install NAVIGNORE"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/NAVIGNORE/esd/uninstall.sh"
+   label    "Uninstall NAVIGNORE"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/NAVIGNORE/esd/restore.sh"
+   label    "Restore original lsd.sh"
