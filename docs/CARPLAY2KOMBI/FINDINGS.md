@@ -165,7 +165,22 @@ So `displaymanager` can't encode CarPlay for the cluster; it needs an encoder of
 
 The output is Baseline level 3.0, 800×298, 30 fps, with SPS, PPS and IDR every 15 frames (at 2.4 Mbit/s, about 1.8 Mbit/s in practice), and CarPlay keeps running.
 A 15-second recording of it, packed as TS and sent with `cpkinject`, **plays cleanly on the cluster**.
-What's left is doing that live: the TS muxer and paced writer in the hook, and switching the cluster to context 77 and back.
+
+## Live streaming
+
+[`cpkstream.c`](../../source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native/cpkstream.c) streams the encoder output to the cluster live, and **live CarPlay shows in the cluster**.
+
+- Each frame becomes PAT, PMT, a PCR packet and the video PES (PTS 60 ms after the PCR, from the monotonic clock), padded with null packets to whole 12032-byte blocks.
+- A lock-free ring (32 blocks) feeds a writer thread that writes the blocks to `/dev/mlb/isoTX2`, so CarPlay's own display never waits on the MOST bus.
+  If the ring is full, the frame is dropped and the next one is forced to be an IDR. With no new frames, the thread sends a PCR every 100 ms.
+- The encoder is drained right after each frame (up to 30 ms). Without that, a frame only came out with the next CarPlay frame, which made the cluster lag on a still screen.
+- The hook must be built with `-mno-unaligned-access`: the MMX traps unaligned word stores, and clang merged byte writes of the PES header into one.
+
+[`cpk-cluster.sh`](../../source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native/cpk-cluster.sh) (installed in `/mnt/app/cpk/`) switches it:
+`on` puts the cluster on context 77 and creates `/ramdisk/cpk/stream`; `off` removes it and puts the map back with context 73.
+Streaming writes nothing to flash: the video goes from memory to the MOST device, and the trigger and the log (capped at 200 lines) are in `/ramdisk`.
+
+Still open: navigation switches the cluster back (to the compass) when a route starts, see Open questions.
 
 ## How to repeat the checks
 
@@ -180,6 +195,7 @@ Over SSH on the MMX (see the README for setting up SSH):
 ## Open questions
 
 - Whether the cluster decodes High profile at 800×298, or only Baseline (not needed: the Tegra encoder makes Baseline).
-- Live streaming: keeping the cluster on context 77 while navigation switches it back, and recovering when CarPlay disconnects.
+- Keeping the cluster on context 77: `GfxStreamController` switches display 4 back to its own context when route guidance starts (seen as the compass when a CarPlay route starts). Needs a Java patch.
+- Whether CarPlay keeps drawing frames (and the hook keeps encoding) while the main screen shows another MMI screen.
 - Whether the cluster would show a stream that is not map-like, or needs a particular foreground picture type (`setFGLayer`, never called by the HMI).
 - `getDisplayableInfo(59, 4)` exists in the DSI but has no caller; its answer wasn't checked.
