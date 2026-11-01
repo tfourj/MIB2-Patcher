@@ -11,10 +11,11 @@ Patches are sorted by firmware train, and the patcher only offers the ones built
 | TEL2ACP | The TEL key opens Apple CarPlay | ✅ Tested | [README](docs/TEL2ACP/README.md) |
 | MENUSCREEN | A MENU tile that opens a screen with Open GEM, Open REM and Restart CarPlay | ✅ Tested | [README](docs/MENUSCREEN/README.md) |
 | NAVIGNORE | The MMI navigation keeps running when a CarPlay route starts | ✅ Tested | [README](docs/NAVIGNORE/README.md) |
+| TOUCHCURSOR | The MMI touchpad moves a cursor in CarPlay, and a tap touches where it is | 🧪 Not tested yet | [README](docs/TOUCHCURSOR/README.md) |
 
 | Train | Unit | Patches |
 |---|---|---|
-| `MHI2_ER_AU57x_K3663_1` | MU1425, e.g. A6/A7 C7 | JOKERBTN, TEL2ACP, MENUSCREEN, NAVIGNORE |
+| `MHI2_ER_AU57x_K3663_1` | MU1425, e.g. A6/A7 C7 | JOKERBTN, TEL2ACP, MENUSCREEN, NAVIGNORE, TOUCHCURSOR |
 
 > [!WARNING]
 > The patches were built by reverse engineering one unit's firmware. If something is wrong, the MMI screen software may not start (black screen, no GEM).
@@ -76,9 +77,10 @@ MIB2_Patcher           Status, Update, Force update, Install all, Uninstall ever
 │   ├── INFO_button
 │   └── Voice_button
 ├── MENUSCREEN         Status, Install, Uninstall, Restore, tile slot
-└── TEL2ACP            Status, TEL modes, Install, Uninstall, Restore
-    ├── Set_CarPlay_Custom
-    └── Set_CarPlay_Keys
+├── TEL2ACP            Status, TEL modes, Install, Uninstall, Restore
+│   ├── Set_CarPlay_Custom
+│   └── Set_CarPlay_Keys
+└── TOUCHCURSOR        Status, Install, Uninstall, Restore
 ```
 
 ## patcher.sh
@@ -151,8 +153,7 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
 | `docs/<patch>/` | README and firmware findings of each patch |
 | `docs/CARPLAY2KOMBI/` | Findings on showing CarPlay in the cluster (experimental, not one of the patches) |
 | `source/<train>/CARPLAY2KOMBI/native/` | Experimental C hook that streams CarPlay to the cluster, installed by hand (see its findings) |
-| `docs/TOUCHCURSOR/` | Findings on using the touchpad as a cursor in CarPlay (experimental, not one of the patches) |
-| `source/<train>/TOUCHCURSOR/diag/` | Experimental touchpad diagnostic jar and its installer, installed by hand (see its findings) |
+| `source/<train>/TOUCHCURSOR/diag/` | Experimental touchpad diagnostic jar (TOUCHDIAG) and its installer, installed by hand (see the TOUCHCURSOR findings) |
 | `tools/jxe/` | Python tools for reading the firmware, see [docs/TOOLS.md](docs/TOOLS.md) |
 | `build.sh` | Builds a patch jar |
 | `package.sh` | Packages the SD card zip |
