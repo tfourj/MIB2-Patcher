@@ -14,9 +14,9 @@ import de.audi.tghu.hmi.view.d4.BorderWidgetD4;
  *
  * Built like SystemScreenBag2.messageScreen (labels in the standard border on
  * a type 28 screen). The screen handles the MMI knob itself: turning moves
- * the selection, pressing runs the selected button. BACK fires HK_MENU,
- * because the state machine is still in the MENU state and has no BACK
- * transition there.
+ * the selection, pressing runs the selected button. BACK reaches the screen
+ * before the state machine, which has no BACK transition in the MENU state,
+ * so the screen leaves for MENU itself (see MenuScreen.close).
  */
 final class MenuScreenWidget extends ScreenWidget {
 
@@ -28,8 +28,6 @@ final class MenuScreenWidget extends ScreenWidget {
     private static final int KEY_MENU_KNOB = 17;
     // de.audi.atip.hmi.event.WheelButtonEvent.LEFTTURN
     private static final int LEFT_TURN = 1;
-    // SMEventSystem.HK_MENU, which re-enters the MENU state from anywhere
-    private static final int HK_MENU = 1400;
     // Standard border images 8010-8045, as in SystemScreenBag2.messageScreen
     private static final int BORDER_FIRST_IMAGE = 8010;
     private static final int BORDER_IMAGE_COUNT = 36;
@@ -102,7 +100,7 @@ final class MenuScreenWidget extends ScreenWidget {
         int key = e.getKeyCode();
         if (key == KEY_BACK) {
             e.consume();
-            fireSMEvent(getTerminalID(), HK_MENU);
+            MenuScreen.close(getTerminalID(), "BACK");
             return;
         }
         if (key == KEY_MENU_KNOB) {

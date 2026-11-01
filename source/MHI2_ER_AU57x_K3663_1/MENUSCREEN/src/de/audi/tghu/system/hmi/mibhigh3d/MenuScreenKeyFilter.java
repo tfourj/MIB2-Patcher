@@ -1,69 +1,62 @@
 package de.audi.tghu.system.hmi.mibhigh3d;
 
-import de.audi.atip.hmi.HMIService;
+import de.audi.atip.hmi.event.RunnableEvent;
 import de.audi.atip.hmi.event.StateMachineEvent;
 import de.esolutions.fw.util.commons.job.BaseJobFilter;
 import de.esolutions.fw.util.commons.job.Job;
 
 /**
- * Makes BACK close the MENUSCREEN screen. New class, not part of lsd.jxe.
+ * Makes BACK and MENU close the MENUSCREEN screen. New class, not part of
+ * lsd.jxe.
  *
- * The BACK key never reaches the screen: ApplicationManagerGUI turns it into
- * the state machine event HK_RETURN. The state machine is still in the MENU
- * state while the screen shows, and MENU has no HK_RETURN transition, so BACK
- * would do nothing. This filter sits in the HMI event queue (like the
+ * The state machine is still in the MENU state while the screen shows. There
+ * HK_MENU is a transition back into the same state, which the state machine
+ * doesn't redraw, and HK_RETURN has no transition at all, so neither key
+ * would leave the screen. This filter sits in the HMI event queue (like the
  * firmware's own HMIEventQueue filters) and, only while the MENUSCREEN screen
- * is showing, swaps HK_RETURN for HK_MENU, which brings the main menu back.
+ * is showing, queues MenuScreen.close right behind the key's event. HK_RETURN
+ * is dropped, HK_MENU goes on to the state machine as usual.
  *
  * Every HMI event passes here, so the check is cheap and never throws.
  */
-final class MenuScreenBackFilter extends BaseJobFilter {
+final class MenuScreenKeyFilter extends BaseJobFilter {
 
     // SMEventSystem
     private static final int HK_RETURN = 121;
     private static final int HK_MENU = 1400;
 
-    private final HMIService hmi;
-
-    MenuScreenBackFilter(HMIService hmi) {
-        this.hmi = hmi;
-    }
-
     public void enqueue(Job job, int priority) {
+        Runnable close = null;
+        boolean drop = false;
         try {
             Object payload = job.getPayload();
             if (payload instanceof StateMachineEvent) {
                 StateMachineEvent event = (StateMachineEvent) payload;
-                if (event.getSMEventID() == HK_RETURN && isMenuScreenShowing(event.getStateMachineID())) {
-                    backToMenu(event.getStateMachineID());
-                    return;
+                int id = event.getSMEventID();
+                int terminalId = event.getStateMachineID();
+                if ((id == HK_RETURN || id == HK_MENU) && MenuScreen.isShowing(terminalId)) {
+                    close = closeTask(terminalId, id == HK_RETURN ? "BACK" : "MENU");
+                    drop = id == HK_RETURN;
                 }
             }
         } catch (Throwable t) {
-            MenuScreen.log("back filter failed", t);
+            MenuScreen.log("key filter failed", t);
         }
-        super.enqueue(job, priority);
+        if (!drop) {
+            super.enqueue(job, priority);
+        }
+        if (close != null) {
+            // A RunnableEvent runs on the HMI event thread, where the state
+            // machine runs. Queued here it comes right after the key's event
+            super.enqueue(new Job(new RunnableEvent(close)), priority);
+        }
     }
 
-    private boolean isMenuScreenShowing(int terminalId) {
-        int screenId = MenuScreen.screenId();
-        return screenId >= 0 && terminalId == MenuScreen.getTerminalId() && this.hmi.getCurrentScreenID() == screenId;
-    }
-
-    // Posted from its own thread: this runs inside the event queue, which a
-    // new event from here would enter again
-    private void backToMenu(final int terminalId) {
-        MenuScreen.log("BACK on the screen, going back to MENU");
-        Thread poster = new Thread(new Runnable() {
+    private static Runnable closeTask(final int terminalId, final String key) {
+        return new Runnable() {
             public void run() {
-                try {
-                    hmi.fireSMEvent(terminalId, HK_MENU);
-                } catch (Throwable t) {
-                    MenuScreen.log("BACK to MENU failed", t);
-                }
+                MenuScreen.close(terminalId, key);
             }
-        }, "MenuScreenBack");
-        poster.setDaemon(true);
-        poster.start();
+        };
     }
 }

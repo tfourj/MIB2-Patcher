@@ -13,8 +13,12 @@ import de.audi.atip.base.IFrameworkAccess;
 import de.audi.atip.hmi.HMIBundle;
 import de.audi.atip.hmi.HMIServiceSM;
 import de.audi.atip.hmi.view.AbstractScreenFactory;
+import de.audi.atip.statemachine.SMInterpreter;
 import de.audi.tghu.hmi.view.HMITerminalImpl;
 import de.audi.tghu.hmi.view.InitializationContext;
+import de.audi.tghu.smi.SMI;
+import de.audi.tghu.smi.StateMachine;
+import de.audi.tghu.smi.StateMachineTerminal;
 
 /**
  * The MENUSCREEN feature: a MENU tile that opens a screen with Open GEM, Open
@@ -27,7 +31,7 @@ import de.audi.tghu.hmi.view.InitializationContext;
  * screen. The bundle takes a free ID from 26 to 31: HMIRegistry looks bundles
  * up in an array cached at startup (32 entries for the firmware's IDs 0-25),
  * so a higher ID would be stored in a new array the lookup never sees. The state machine stays in the MENU state,
- * so the MENU key brings the main menu back.
+ * so close() brings the main menu back when BACK or MENU is pressed (see MenuScreenKeyFilter).
  *
  * Settings live in /mnt/persist/menuscreen.conf, written by menuscreen.sh:
  *
@@ -70,7 +74,7 @@ public final class MenuScreen {
     private static String systemSkin = null;
     private static IFrameworkAccess framework = null;
     private static int terminalId = -1;
-    private static boolean backFilterAdded = false;
+    private static boolean keyFilterAdded = false;
 
     private MenuScreen() {
     }
@@ -131,11 +135,10 @@ public final class MenuScreen {
                 bundle = newBundle;
                 log("bundle " + id + " registered for skin " + newBundle.getSkin());
             }
-            if (!backFilterAdded) {
-                framework.getHMIService().getEventDispatcherAdmin().addEventFilter(
-                        new MenuScreenBackFilter(framework.getHMIService()));
-                backFilterAdded = true;
-                log("BACK filter added");
+            if (!keyFilterAdded) {
+                framework.getHMIService().getEventDispatcherAdmin().addEventFilter(new MenuScreenKeyFilter());
+                keyFilterAdded = true;
+                log("key filter added");
             }
             terminalId = terminal.getTerminalID();
             int screen = screenId();
@@ -144,6 +147,46 @@ public final class MenuScreen {
             log("screen " + screen + " shown on terminal " + terminalId);
         } catch (Throwable t) {
             log("open failed", t);
+        }
+    }
+
+    /** True while the screen is showing on the terminal. Never throws. */
+    static boolean isShowing(int terminal) {
+        try {
+            int screen = screenId();
+            return screen >= 0 && framework != null && terminal == terminalId
+                    && framework.getHMIService().getCurrentScreenID() == screen;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Leaves the screen for the MENU screen after BACK or MENU. Runs on the
+     * HMI event thread. Never throws.
+     *
+     * The state machine is still in the MENU state, and its HK_MENU
+     * transition goes back into that same state, which
+     * AbstractStateMachine.jumpToState doesn't redraw. So this asks the state
+     * machine to show the screen of its current state again, the way
+     * SMI.stopPopup does when a popup closes.
+     */
+    static void close(int terminal, String key) {
+        try {
+            if (!isShowing(terminal)) {
+                return;
+            }
+            SMInterpreter smi = framework.getSMInterpreter();
+            StateMachineTerminal smTerminal = smi instanceof SMI ? ((SMI) smi).getSMTerminal(terminal) : null;
+            StateMachine sm = smTerminal == null ? null : smTerminal.getActiveSubterminalStateMachine();
+            if (sm == null) {
+                log(key + ": no state machine for terminal " + terminal);
+                return;
+            }
+            sm.reactivateUI();
+            log(key + " on the screen, back to MENU");
+        } catch (Throwable t) {
+            log(key + " failed", t);
         }
     }
 
