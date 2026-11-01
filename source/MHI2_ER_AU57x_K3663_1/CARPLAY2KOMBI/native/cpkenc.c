@@ -99,10 +99,14 @@ static void *encoder;
 /* Set when the setup failed: stay off instead of retrying every frame */
 static int broken;
 
-/* NvMedia encoder init (libnvvsenc's values) and the config it points to at +0x30 */
-static u32 encoder_init[16];
+/*
+ * NvMedia encoder init (libnvvsenc's values) and the config it points to at +0x30.
+ * Kept large and zeroed: FeedFrame reads the picture params up to +0x48 (a count at
+ * +0x44 and an array pointer at +0x48), and junk there crashes it
+ */
+static u32 encoder_init[64];
 static u32 encoder_config[64];
-static u32 picture_params[16];
+static u32 picture_params[64];
 
 static FILE *video_file;
 static FILE *log_file;
