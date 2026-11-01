@@ -86,6 +86,8 @@ public final class TouchDiag {
     private static int maxX = 0;
     private static int maxY = 0;
     private static boolean fingerDown = false;
+    private static int touchX = 0;
+    private static int touchY = 0;
     private static long lastRelease = 0;
     private static int mode = 0;
     private static long modeChecked = 0;
@@ -170,20 +172,27 @@ public final class TouchDiag {
         int ty = mapY(y);
         if (id == TOUCH_PAD_PRESSED) {
             fingerDown = true;
+            touchX = tx;
+            touchY = ty;
             send(1, tx, ty);
         } else if (id == TOUCH_PAD_MOVED_ABS) {
             if (fingerDown) {
+                touchX = tx;
+                touchY = ty;
                 send(1, tx, ty);
             }
         } else if (id == TOUCH_PAD_RELEASED) {
+            // Releases come with x and y 0: lift the finger where it last was
             if (fingerDown) {
-                send(0, tx, ty);
+                send(0, touchX, touchY);
             }
             fingerDown = false;
             lastRelease = System.currentTimeMillis();
         } else if (id == TOUCH_PAD_TAPPED) {
             long sinceRelease = System.currentTimeMillis() - lastRelease;
-            if (!fingerDown && (sinceRelease < 0 || sinceRelease > TAP_AFTER_RELEASE_MS)) {
+            // Taps also come with x and y 0, so only one with a real position is sent
+            boolean hasPosition = x != 0 || y != 0;
+            if (!fingerDown && hasPosition && (sinceRelease < 0 || sinceRelease > TAP_AFTER_RELEASE_MS)) {
                 send(1, tx, ty);
                 send(0, tx, ty);
             }
