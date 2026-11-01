@@ -7,3 +7,4 @@ backup/
 *.jxe
 rom.classes
 *.dis
+.DS_Store
