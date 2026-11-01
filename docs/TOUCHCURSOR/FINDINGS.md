@@ -63,7 +63,7 @@ Open questions, which the diagnostic answers:
 
 1. Which touchpad events reach the HMI while CarPlay is on screen, and does a swipe also send keys? See [Test 1](#test-1-what-the-touchpad-sends-in-carplay).
 2. Does the iPhone accept touches once `inputFeatures` is 13? Very likely, see [Test 3](#test-3-touches-to-the-iphone).
-3. Does an HMI bitmap show above the CarPlay video? (Not covered by the diagnostic yet.)
+3. Does an HMI bitmap show above the CarPlay video? TOUCHDIAG 0.3.0 tests it with a cursor.
 4. Does another keypanel mode (map panning, 6) send finger moves on the CarPlay screen? Yes, see [Test 2](#test-2-map-panning-mode-on-the-carplay-screen).
 
 ## Test 1: what the touchpad sends in CarPlay
@@ -121,7 +121,16 @@ The HMI writes `/ramdisk/touchdiag.log` (up to 1 MB). Lines start with the time 
 | `I fingers= x= y=` | Touch sent by the diagnostic |
 | `M mode= set= before=` | Keypanel mode switched by the diagnostic |
 
-While `/ramdisk/touchdiag.mode` holds a `KbdService` recognizer mode (e.g. `6`), a touchpad press on the CarPlay screen switches the keypanel to it, again at most every 2 seconds, since the terminal mode app may set its own mode back.
+While `/ramdisk/touchdiag.mode` holds a `KbdService` recognizer mode (e.g. `6`), a touchpad press on the CarPlay screen switches the keypanel to it.
+From 0.3.0 it switches again only when the mode changes or after touchpad encoder keys (64, 65) show the terminal mode app set its own mode back (0.2.0 did it on every press, at most every 2 seconds).
+
+While `/ramdisk/touchdiag.cursor` exists (0.3.0), the CarPlay screen gets a cursor, an 18 x 18 white square with a black border:
+
+- It is drawn like the firmware's `WidgetFinderDiag` markers: a screen-sized `Composite` in front of everything in `HWGManager.getRootComposite()`, holding one texture from `HWGManager.getTexture`, painted with `Graphics2D`. Moves call `IRootWindow.repaint()`, the HMI's own paint call, on the HMI thread.
+- The keypanel goes to map panning (6) unless the mode file says otherwise. `TOUCH_PAD_MOVED_REL` steps move the cursor (2.5 pixels per step), and `TOUCH_PAD_TAPPED` sends a touch where the cursor is.
+- Touchpad keys and a joystick event within 150 ms of a press are swallowed, so the focus doesn't move.
+- On any other screen the cursor is hidden and the touchpad works as stock.
+- The touchscreen bit is added as with the inject flag.
 
 While `/ramdisk/touchdiag.inject` exists, the touchpad is not passed to the HMI.
 Its position is mapped onto the 780 x 468 CarPlay window and sent as a touch: press and move follow the finger, release lifts it where it last was, and a tap with a position but no press becomes a press and a release.
@@ -146,7 +155,8 @@ Test:
 1. With CarPlay on screen, tap, swipe and drag on the touchpad, and turn the knob. Copy `/ramdisk/touchdiag.log`.
 2. `echo 6 > /ramdisk/touchdiag.mode`, touch the pad once on the CarPlay screen, then drag slowly. The log shows whether `MOVED` events (10911, 10912) come now.
 3. `touch /ramdisk/touchdiag.inject`, restart CarPlay (MENUSCREEN or reconnect the phone), check that the log shows `inputFeatures=13`, then tap and drag on the touchpad.
-4. `rm /ramdisk/touchdiag.inject /ramdisk/touchdiag.mode` to get the stock touchpad back. A reboot clears them too.
+4. Cursor (0.3.0): `touch /ramdisk/touchdiag.cursor` (without the inject flag), restart CarPlay, then drag on the pad to move the cursor and tap to touch.
+5. `rm /ramdisk/touchdiag.*` flags to get the stock touchpad back. A reboot clears them too.
 
 Remove it with `sh /mnt/persist/touchdiag/touchdiag.sh uninstall`, reboot the MMI, then delete `/mnt/persist/touchdiag`.
 MIB2-Patcher's Uninstall everything doesn't remove it.
