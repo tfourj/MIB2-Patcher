@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# JOKERBTN v1.1.1 - the steering wheel joker (star) button skips tracks in CarPlay,
+# JOKERBTN v1.1.2 - the steering wheel joker (star) button skips tracks in CarPlay,
 # and the joker, INFO and voice buttons can be set to other functions
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
@@ -23,7 +23,7 @@
 # (mod/command.sh) or from the JOKERBTN GEM screen. Reboot the MMI after
 # install, uninstall and restore.
 
-VERSION="1.1.1"
+VERSION="1.1.2"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
