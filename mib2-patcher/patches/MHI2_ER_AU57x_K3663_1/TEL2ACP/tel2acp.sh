@@ -353,7 +353,7 @@ remove_gem_link() {
 
 # Puts [x] in front of the label of the entry that runs esd/<prefix>-<selected>.sh
 # and [ ] in front of the other <prefix>-* entries. GEM reads the file when it
-# loads its screens, so it may only show the new marks after an MMI reboot.
+# loads its screens, so it only shows the new marks after GEM is closed and opened again.
 mark_esd() {
 	file="$1"
 	prefix="$2"
@@ -402,7 +402,7 @@ refresh_marks() {
 	rc=$?
 	mount_ro
 	[ $rc = 0 ] || { log "WARNING: could not update the [x] marks in the GEM screens"; return; }
-	log "GEM [x] marks updated, GEM may only show them after an MMI reboot"
+	log "GEM [x] marks updated, close and open GEM again to see them"
 }
 
 link_esd() {
