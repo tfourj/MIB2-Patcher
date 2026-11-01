@@ -139,6 +139,13 @@ A Baseline 800×298 test pattern (video PID `0x1011`, PCR PID `0x100`, PMT `0x10
 So the path works: stop the map encoder with `dmdt sc 4 77`, write whole 12032-byte blocks to `/dev/mlb/isoTX2` in real time, and switch back with `dmdt sc 4 73`.
 CarPlay's own stream is 780×468, so it can't be passed through unchanged. It has to be scaled to 800×298 and encoded again.
 
+**Layout.** A recorded CarPlay clip, re-encoded on a Mac and sent this way, plays on the cluster.
+The map window sits between the two round dials. The whole CarPlay screen scaled to **496×298**, centred with black sides, fits it best. A full-width crop is too zoomed in, and 85% or 70% leave unused space.
+
+**Context 76 on the cluster.** `dmdt sc 4 76` ([16 HMI, 59 CarPlay]) makes `displaymanager`'s own encoder run without the `nvmap` errors of context 77.
+With only a stream displayable it seems to hand the decoder's buffer straight to the encoder ("Optimized case 1: non stream displayable not found in actual context!" in the binary); with a drawn layer it composites first.
+The cluster didn't show CarPlay, though.
+
 ## How to repeat the checks
 
 Over SSH on the MMX (see the README for setting up SSH):
