@@ -151,6 +151,8 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
 | `docs/<patch>/` | README and firmware findings of each patch |
 | `docs/CARPLAY2KOMBI/` | Findings on showing CarPlay in the cluster (experimental, not one of the patches) |
 | `source/<train>/CARPLAY2KOMBI/native/` | Experimental C hook that streams CarPlay to the cluster, installed by hand (see its findings) |
+| `docs/TOUCHCURSOR/` | Findings on using the touchpad as a cursor in CarPlay (experimental, not one of the patches) |
+| `source/<train>/TOUCHCURSOR/diag/` | Experimental touchpad diagnostic jar and its installer, installed by hand (see its findings) |
 | `tools/jxe/` | Python tools for reading the firmware, see [docs/TOOLS.md](docs/TOOLS.md) |
 | `build.sh` | Builds a patch jar |
 | `package.sh` | Packages the SD card zip |
