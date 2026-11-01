@@ -4,8 +4,8 @@
 #
 # Usage: cpk-cluster.sh on [delay] | off
 #   on   the cluster stops showing the map (context 77) and the hook streams CarPlay to it.
-#        delay: how many ms the cluster holds each frame (default 60), or nopts to show
-#        frames as soon as they are decoded
+#        By default frames have no timestamp and show as soon as they are decoded;
+#        delay: ms the cluster holds each frame instead (e.g. 60)
 #   off  the hook stops streaming and the cluster shows the map again (context 73)
 # Nothing is saved: after a reboot the cluster shows the map.
 DMDT=/mnt/app/eso/bin/apps/dmdt
@@ -26,14 +26,13 @@ case "$1" in
 		# map encoder stops and the hook's stream is the only one on the cluster's MOST channel
 		$DMDT dc 77 59 > /dev/null 2>&1
 		$DMDT sc 4 77 > /dev/null 2>&1
-		# The hook reads the delay when streaming starts: ms, or -1 for no PTS
+		# The hook reads the delay when streaming starts: ms, or no file for no timestamps
 		case "$2" in
-			'') rm -f "$DELAY" ;;
-			nopts) echo -1 > "$DELAY" ;;
+			'' | nopts) rm -f "$DELAY" ;;
 			*) echo "$2" > "$DELAY" ;;
 		esac
 		mkdir -p "$TRIGGER"
-		echo "CarPlay in the cluster: on ${2:-60}"
+		echo "CarPlay in the cluster: on ${2:-without timestamps}"
 		;;
 	off)
 		rm -r "$TRIGGER" 2> /dev/null
