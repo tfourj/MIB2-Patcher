@@ -2,15 +2,18 @@
 # CARPLAY2KOMBI: shows CarPlay in the cluster's map window, or the map again.
 # Needs libcpkhook.so loaded in dio_manager (LD_PRELOAD in smartphone_integrator.json).
 #
-# Usage: cpk-cluster.sh on [delay] | off
+# Usage: cpk-cluster.sh on [delay [fill]] | off
 #   on   the cluster stops showing the map (context 77) and the hook streams CarPlay to it.
 #        By default frames have no timestamp and show as soon as they are decoded;
-#        delay: ms the cluster holds each frame instead (e.g. 60)
+#        delay: ms the cluster holds each frame instead (e.g. 60), or nopts.
+#        fill: send filler data when there was no frame for this many ms (default 100);
+#        more data on the channel makes the cluster decode sooner
 #   off  the hook stops streaming and the cluster shows the map again (context 73)
 # Nothing is saved: after a reboot the cluster shows the map.
 DMDT=/mnt/app/eso/bin/apps/dmdt
 TRIGGER=/ramdisk/cpk/stream
 DELAY=/ramdisk/cpk/delay
+FILL=/ramdisk/cpk/fill
 
 . /mnt/app/root/.profile 2>/dev/null
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mnt/app/eso/lib:/eso/lib:/mnt/app/root/lib-target
@@ -31,8 +34,13 @@ case "$1" in
 			'' | nopts) rm -f "$DELAY" ;;
 			*) echo "$2" > "$DELAY" ;;
 		esac
+		if [ -n "$3" ]; then
+			echo "$3" > "$FILL"
+		else
+			rm -f "$FILL"
+		fi
 		mkdir -p "$TRIGGER"
-		echo "CarPlay in the cluster: on ${2:-without timestamps}"
+		echo "CarPlay in the cluster: on, delay ${2:-none}, fill ${3:-100} ms"
 		;;
 	off)
 		rm -r "$TRIGGER" 2> /dev/null
