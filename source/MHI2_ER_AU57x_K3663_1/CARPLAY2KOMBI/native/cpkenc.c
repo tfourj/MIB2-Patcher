@@ -1,11 +1,12 @@
 /*
- * CARPLAY2KOMBI hardware encode test, linked into libcpkhook.so.
+ * CARPLAY2KOMBI hardware encoder, linked into libcpkhook.so.
  *
- * While /ramdisk/cpk/enc exists, every decoded CarPlay frame that libnvss_video
- * hands to NvMediaVideoMixerRender is scaled by a second NvMedia mixer into an
- * 800x298 RGBA surface (the whole picture as 496x298 in the middle, black sides)
- * and encoded by the Tegra's H.264 encoder, the same path as the cluster map.
- * The encoder output goes to /ramdisk/cpk/enc.h264, status lines to /ramdisk/cpk/enc.log.
+ * While /ramdisk/cpk/enc or /ramdisk/cpk/stream exists, every decoded CarPlay frame
+ * that libnvss_video hands to NvMediaVideoMixerRender is scaled by a second NvMedia
+ * mixer into an 800x298 RGBA surface (the whole picture as 496x298 in the middle,
+ * black sides) and encoded by the Tegra's H.264 encoder, the same path as the cluster
+ * map. With enc the output is recorded to /ramdisk/cpk/enc.h264; with stream it goes
+ * to cpkstream.c for the cluster. Status lines go to /ramdisk/cpk/enc.log.
  *
  * Signatures and struct offsets are from libnvss_video's and libnvvsenc's calls into
  * libnvmedia.so (see docs/CARPLAY2KOMBI/FINDINGS.md). NVIDIA's libraries pass floats
@@ -25,6 +26,11 @@ extern u32 fwrite(const void *data, u32 size, u32 count, FILE *file);
 extern int fprintf(FILE *file, const char *format, ...);
 extern int fflush(FILE *file);
 extern int fclose(FILE *file);
+
+/* cpkstream.c: live streaming to the cluster */
+extern __attribute__((visibility("hidden"))) int cpkstream_active(void);
+extern __attribute__((visibility("hidden"))) int cpkstream_take_keyframe(void);
+extern __attribute__((visibility("hidden"))) void cpkstream_frame(const u8 *data, u32 len);
 
 #define NVMEDIA_LIBRARY "libnvmedia.so"
 #define DLOPEN_MODE 0x100
@@ -172,8 +178,8 @@ static int setup(const u32 *source)
 	return encoder != 0;
 }
 
-/* Writes whatever the encoder has finished */
-static void drain(void)
+/* Hands whatever the encoder has finished to the recording and/or the live stream */
+static void drain(int recording, int streaming)
 {
 	u32 bytes = 0;
 	int status;
@@ -188,10 +194,12 @@ static void drain(void)
 			fprintf(log_file, "frame %u: GetBits %d\n", frames, status);
 			return;
 		}
-		if (written_bytes + bytes <= ENC_MAX_BYTES) {
+		if (recording && written_bytes + bytes <= ENC_MAX_BYTES) {
 			fwrite(bits, 1, bytes, video_file);
 			written_bytes += bytes;
 		}
+		if (streaming)
+			cpkstream_frame(bits, bytes);
 		if (frames < 5)
 			fprintf(log_file, "frame %u: %u bytes\n", frames, bytes);
 		bytes = 0;
@@ -215,21 +223,25 @@ __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface)
 	struct nvm_rect src = { 0, 0, SOURCE_WIDTH, SOURCE_HEIGHT };
 	struct nvm_rect dst = { PICTURE_X, 0, PICTURE_X + PICTURE_WIDTH, OUT_HEIGHT };
 	struct nvm_primary primary = { 3, 0, surface, 0, 0, &src, &dst };
+	int recording = access(ENC_TRIGGER, 0) == 0 && written_bytes < ENC_MAX_BYTES;
+	int streaming = cpkstream_active();
 	int status;
 
-	if (access(ENC_TRIGGER, 0) != 0 || written_bytes >= ENC_MAX_BYTES) {
+	if (!recording && !streaming) {
 		stop();
 		return;
 	}
 	if (broken)
 		return;
-	if (!video_file) {
-		video_file = fopen(ENC_VIDEO, "ab");
+	if (!log_file) {
 		log_file = fopen(ENC_LOG, "a");
-		if (!video_file || !log_file) {
-			stop();
+		if (!log_file)
 			return;
-		}
+	}
+	if (recording && !video_file) {
+		video_file = fopen(ENC_VIDEO, "ab");
+		if (!video_file)
+			recording = 0;
 	}
 	if (!encoder && !setup(source)) {
 		broken = 1;
@@ -245,14 +257,15 @@ __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface)
 	if (status != 0 || frames < 5)
 		fprintf(log_file, "frame %u: RenderSurface %d\n", frames, status);
 	if (status == 0) {
-		/* Bit 0: IDR with SPS and PPS, for the first frame */
-		picture_params[0] = frames == 0 ? 1 : 0;
+		/* Bit 0: IDR with SPS and PPS, for the first frame, a stream start or after a drop */
+		picture_params[0] = frames == 0 || cpkstream_take_keyframe() ? 1 : 0;
 		status = encoder_feed(encoder, rgba, 0, 0, picture_params);
 		if (status != 0 || frames < 5)
 			fprintf(log_file, "frame %u: FeedFrame %d\n", frames, status);
 	}
-	drain();
+	drain(recording, streaming);
 	frames++;
-	fflush(video_file);
+	if (video_file)
+		fflush(video_file);
 	fflush(log_file);
 }

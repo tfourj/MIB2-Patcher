@@ -43,7 +43,7 @@ build_lib() {
     echo "built build/lib$name.so"
 }
 
-# cpkhook (with the cpkenc encode test): preloaded into dio_manager.
+# cpkhook (with the cpkenc hardware encoder and cpkstream live streaming): preloaded into dio_manager.
 # cpkinject: test writer for the cluster's MOST channel
-build_lib cpkhook cpkenc
+build_lib cpkhook cpkenc cpkstream
 build_lib cpkinject
