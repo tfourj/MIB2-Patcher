@@ -24,9 +24,10 @@ import org.dsi.ifc.carplay.TouchEvent;
  * - startService, postButtonEvent, postRotaryEvent and postTouchEvent are
  *   written to the TouchDiag log, so the log shows what the touchpad turns
  *   into on the way to the iPhone.
- * - While /ramdisk/touchdiag.inject exists when CarPlay starts, startService
- *   adds INPUTFEATURE_HIGHFIDELITYTOUCH, so dio_manager also registers a
- *   touchscreen with the iPhone (stock: knob and touchpad only).
+ * - While /ramdisk/touchdiag.inject or /ramdisk/touchdiag.cursor exists when
+ *   CarPlay starts, startService adds INPUTFEATURE_HIGHFIDELITYTOUCH, so
+ *   dio_manager also registers a touchscreen with the iPhone (stock: knob and
+ *   touchpad only).
  * - It gives TouchDiag a sink that sends touchscreen touches.
  */
 public class DSICarplaySafeProxy extends NotificationProxy implements DSICarplaySafe {
@@ -76,12 +77,13 @@ public class DSICarplaySafeProxy extends NotificationProxy implements DSICarplay
 
     public void startService(ServiceConfiguration config) {
         try {
-            if (TouchDiag.isInjectOn()) {
+            if (TouchDiag.isInjectOn() || TouchDiag.isCursorOn()) {
                 config.inputFeatures |= INPUTFEATURE_HIGHFIDELITYTOUCH;
             }
             if (config.screenResolution == SCREENRESOLUTION_CUSTOM) {
                 TouchDiag.setWindow(config.xResolution, config.yResolution);
             }
+            TouchDiag.setOffset(config.xOffset, config.yOffset);
             TouchDiag.setPad(config.touchpadXResolution, config.touchpadYResolution);
             TouchDiag.log("C startService inputFeatures=" + config.inputFeatures
                     + " res=" + config.screenResolution + " window=" + config.xResolution + "x" + config.yResolution
