@@ -1,10 +1,13 @@
 package de.audi.atip.hmi.event;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 
 import de.audi.atip.hmi.IRootWindow;
+import de.audi.atip.hmi.KbdService;
 import de.audi.atip.hmi.view.Screen;
+import de.audi.tghu.fwhmi.AbstractWindow;
 
 /**
  * TOUCHCURSOR diagnostic: logs what the MMI touchpad sends and can send it to
@@ -22,6 +25,13 @@ import de.audi.atip.hmi.view.Screen;
  * a release. Key events from the touchpad (key source KBD_TOUCHPAD, touchpad
  * encoder keys) are swallowed too, so a swipe doesn't also move the focus.
  * Handwriting results and approach events still go to the HMI.
+ *
+ * On the CarPlay screen the keypanel runs in the recognizer mode the terminal
+ * mode app sets (25, 26 with text input): presses carry a position, but moves
+ * only come as touchpad encoder and zone keys. While /ramdisk/touchdiag.mode
+ * holds a KbdService recognizer mode (e.g. 6, map panning), a touchpad press
+ * on the CarPlay screen switches the keypanel to it, the way the map screen
+ * does, to see which events that mode sends.
  */
 public final class TouchDiag {
 
@@ -32,9 +42,16 @@ public final class TouchDiag {
 
     private static final String LOG_FILE = "/ramdisk/touchdiag.log";
     private static final String INJECT_FLAG = "/ramdisk/touchdiag.inject";
+    private static final String MODE_FILE = "/ramdisk/touchdiag.mode";
     private static final long MAX_LOG_SIZE = 1024 * 1024;
     private static final long FLAG_CHECK_MS = 1000;
     private static final long LOG_RETRY_MS = 10000;
+    // Re-applies the mode after the terminal mode app may have set its own
+    private static final long MODE_REAPPLY_MS = 2000;
+    private static final int MAX_MODE_FILE_SIZE = 16;
+
+    // Screen ID of the CarPlay screen (seen in the first log)
+    private static final int CARPLAY_SCREEN = 240000;
     // A tap within this time after a release belongs to that press
     private static final long TAP_AFTER_RELEASE_MS = 500;
 
@@ -70,6 +87,9 @@ public final class TouchDiag {
     private static int maxY = 0;
     private static boolean fingerDown = false;
     private static long lastRelease = 0;
+    private static int mode = 0;
+    private static long modeChecked = 0;
+    private static long modeApplied = 0;
 
     private TouchDiag() {
     }
@@ -128,11 +148,16 @@ public final class TouchDiag {
             maxY = y;
         }
 
+        String screen = screenOf(event);
         StringBuffer line = new StringBuffer(80);
         line.append("T ").append(id).append(" code=").append(event.getCode());
         line.append(" x=").append(x).append(" y=").append(y).append(" f=").append(event.getFingerID());
-        line.append(" scr=").append(screenOf(event));
+        line.append(" scr=").append(screen);
         log(line.toString());
+
+        if (id == TOUCH_PAD_PRESSED && screen.equals(String.valueOf(CARPLAY_SCREEN))) {
+            applyMode(event);
+        }
 
         if (!isInjectOn()) {
             return false;
@@ -183,6 +208,62 @@ public final class TouchDiag {
 
         boolean fromTouchpad = source == KBD_TOUCHPAD || code == KEY_TP_ENCODER_X || code == KEY_TP_ENCODER_Y;
         return fromTouchpad && isInjectOn();
+    }
+
+    /** Switches the keypanel to the mode in MODE_FILE, at most every MODE_REAPPLY_MS. */
+    private static void applyMode(ATIPEvent event) {
+        long now = System.currentTimeMillis();
+        if (now - modeChecked >= FLAG_CHECK_MS || now < modeChecked) {
+            modeChecked = now;
+            mode = readMode();
+        }
+        if (mode <= 0 || (now - modeApplied < MODE_REAPPLY_MS && now >= modeApplied)) {
+            return;
+        }
+        modeApplied = now;
+        try {
+            ATIPEventListener receiver = event.getReceiver();
+            if (!(receiver instanceof AbstractWindow)) {
+                log("M no window for mode " + mode);
+                return;
+            }
+            AbstractWindow window = (AbstractWindow) receiver;
+            KbdService kbd = window.getFramework().getHMIService().getHMITerminal(window.getTerminalID())
+                    .getKbdService();
+            int before = kbd.getRecognizerMode();
+            // Null settings: KbdHandler uses the defaults of the mode, as for the map screen
+            boolean set = kbd.setRecognizerMode(mode, null);
+            log("M mode=" + mode + " set=" + set + " before=" + before);
+        } catch (Throwable t) {
+            log("M mode " + mode + " failed: " + t);
+        }
+    }
+
+    private static int readMode() {
+        File file = new File(MODE_FILE);
+        if (!file.exists()) {
+            return 0;
+        }
+        FileInputStream in = null;
+        try {
+            in = new FileInputStream(file);
+            byte[] buffer = new byte[MAX_MODE_FILE_SIZE];
+            int length = in.read(buffer);
+            if (length <= 0) {
+                return 0;
+            }
+            return Integer.parseInt(new String(buffer, 0, length).trim());
+        } catch (Throwable t) {
+            return 0;
+        } finally {
+            try {
+                if (in != null) {
+                    in.close();
+                }
+            } catch (Throwable ignored) {
+                // Nothing to do
+            }
+        }
     }
 
     private static int mapX(int x) {
