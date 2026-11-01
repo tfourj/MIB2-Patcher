@@ -72,8 +72,9 @@ extern __attribute__((visibility("hidden"))) void cpkstream_frame(const u8 *data
 #define DRAIN_WAIT_US 30000
 #define DRAIN_POLL_US 2000
 /*
- * The cluster shows a frame only when the next one arrives. When CarPlay sends nothing
- * for this long, the last picture is encoded again (a tiny frame, nothing changed)
+ * Without a PTS the cluster showed a frame only when the next one arrived. With the
+ * repeat setting (off by default, cpkstream.c stamps every frame with a PTS), the last
+ * picture is encoded again when CarPlay sends nothing for this long (a tiny frame)
  */
 #define REPEAT_US 33000
 /* While this exists, every frame in, repeat and output is logged with its time in ms */
