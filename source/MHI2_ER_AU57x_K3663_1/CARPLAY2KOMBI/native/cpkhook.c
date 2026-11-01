@@ -6,7 +6,8 @@
  * unchanged and, while /ramdisk/cpk/dump exists, copies the H.264 to
  * /ramdisk/cpk/video.h264 with one line per buffer in /ramdisk/cpk/index.txt.
  * It also keeps the CarPlay session from dio_manager's calls into libairplay,
- * so a recording can ask the iPhone for a new keyframe when it starts.
+ * so a recording can ask the iPhone for a new keyframe when it starts, and hands
+ * each decoded frame from NvMediaVideoMixerRender to the encode test in cpkenc.c.
  *
  * Built without QNX headers: the few libc functions are declared here and
  * resolved against the unit's libc.so.3 at link time (see build.sh).
@@ -35,6 +36,7 @@ extern int fclose(FILE *file);
  */
 #define NVSS_LIBRARY "libnvss_video.so"
 #define AIRPLAY_LIBRARY "libairplay.so"
+#define NVMEDIA_LIBRARY "libnvmedia.so"
 #define DLOPEN_MODE 0x100
 
 #define DUMP_TRIGGER "/ramdisk/cpk/dump"
@@ -58,7 +60,17 @@ typedef int (*configure_fn)(void *handle, const u8 *config);
 typedef int (*forward_fn)(void *a, void *b, void *c, void *d);
 /* AirPlayReceiverSessionForceKeyFrame(session, completion, context) */
 typedef int (*keyframe_fn)(void *session, void *completion, void *context);
+/*
+ * NvMediaVideoMixerRender(mixer, outputMask, background, primary, secondary, graphics0,
+ * graphics1, releaseList, timeStamp), as libnvss_video calls it once per decoded frame
+ */
+typedef int (*mixer_render_fn)(void *mixer, u32 mask, void *background, void *primary, void *secondary,
+	void *graphics0, void *graphics1, void *release, void *timestamp);
 
+/* cpkenc.c: the hardware encode test */
+extern __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface);
+
+static mixer_render_fn real_mixer_render;
 static decode_fn real_decode;
 static configure_fn real_configure;
 static forward_fn real_set_delegate;
@@ -93,6 +105,13 @@ static void resolve(void)
 		real_tear_down = (forward_fn)dlsym(airplay, "AirPlayReceiverSessionTearDown");
 	if (airplay && !real_force_keyframe)
 		real_force_keyframe = (keyframe_fn)dlsym(airplay, "AirPlayReceiverSessionForceKeyFrame");
+
+	if (!real_mixer_render) {
+		void *nvmedia = dlopen(NVMEDIA_LIBRARY, DLOPEN_MODE);
+
+		if (nvmedia)
+			real_mixer_render = (mixer_render_fn)dlsym(nvmedia, "NvMediaVideoMixerRender");
+	}
 }
 
 /* Appends value as hex digits to out, returns the new end */
@@ -199,6 +218,27 @@ int NvSSVideoDecode(void *handle, struct nvss_buffer *buffer, u32 arg)
 	if (!real_decode)
 		return (int)0x80000000;
 	return real_decode(handle, buffer, arg);
+}
+
+/*
+ * libnvss_video shows each decoded frame with this. The surface goes to the encode
+ * test first. The guard passes through calls NvMedia might make while we encode
+ */
+int NvMediaVideoMixerRender(void *mixer, u32 mask, void *background, void *primary, void *secondary,
+	void *graphics0, void *graphics1, void *release, void *timestamp)
+{
+	static int encoding;
+
+	resolve();
+	if (!encoding && primary && ((void **)primary)[2]) {
+		encoding = 1;
+		cpkenc_frame(((void **)primary)[2]);
+		encoding = 0;
+	}
+	if (!real_mixer_render)
+		return (int)0x80000000;
+	return real_mixer_render(mixer, mask, background, primary, secondary, graphics0, graphics1,
+		release, timestamp);
 }
 
 /* dio_manager calls this when a CarPlay session starts: remember the session */

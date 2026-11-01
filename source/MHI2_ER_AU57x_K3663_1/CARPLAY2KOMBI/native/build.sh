@@ -17,25 +17,33 @@ LIBC="${LIBC:?set LIBC to the unit libc.so.3}"
 
 mkdir -p build
 
-# Builds build/lib<name>.so from <name>.c
+# Builds build/lib<name>.so from <name>.c and any further sources given
 build_lib() {
     local name="$1"
+    local objects=()
+    local source
 
-    # ARM mode, no floats in our calls, nothing the QNX loader lacks (unwind tables, stack protector)
-    "$LLVM/clang" -target armv7a-none-eabi -marm -mfloat-abi=soft -fPIC -O2 -Wall -Wextra \
-        -ffreestanding -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables \
-        -c "$name.c" -o "build/$name.o"
+    shift
+    for source in "$name" "$@"; do
+        # ARM mode, soft-float calls (NVIDIA's libraries use softfp, which passes floats the same way),
+        # nothing the QNX loader lacks (unwind tables, stack protector)
+        "$LLVM/clang" -target armv7a-none-eabi -marm -mfloat-abi=soft -fPIC -O2 -Wall -Wextra \
+            -ffreestanding -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables \
+            -c "$source.c" -o "build/$source.o"
+        objects+=("build/$source.o")
+    done
 
     # The QNX loader only reads SYSV hash tables. libc's section table is broken, so lld can't
     # read its soname: link it by file name, so DT_NEEDED is libc.so.3 and not the path on this Mac
     "$LLD" -shared --hash-style=sysv -soname "lib$name.so" -z noexecstack \
-        -o "build/lib$name.so" "build/$name.o" -L "$(dirname "$LIBC")" "-l:$(basename "$LIBC")"
+        -o "build/lib$name.so" "${objects[@]}" -L "$(dirname "$LIBC")" "-l:$(basename "$LIBC")"
 
     "$LLVM/llvm-readelf" -d "build/lib$name.so" | grep -q "Shared library: \[libc.so.3\]" ||
         { echo "error: DT_NEEDED of lib$name.so is not libc.so.3" >&2; exit 1; }
     echo "built build/lib$name.so"
 }
 
-# cpkhook: preloaded into dio_manager. cpkinject: test writer for the cluster's MOST channel
-build_lib cpkhook
+# cpkhook (with the cpkenc encode test): preloaded into dio_manager.
+# cpkinject: test writer for the cluster's MOST channel
+build_lib cpkhook cpkenc
 build_lib cpkinject
