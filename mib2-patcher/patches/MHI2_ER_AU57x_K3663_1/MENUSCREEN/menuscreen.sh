@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# MENUSCREEN v0.2.1 - a MENU tile that opens a custom screen (prototype)
+# MENUSCREEN v0.2.2 - a MENU tile that opens a custom screen (prototype)
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
 # Usage: menuscreen.sh <command> [-force]
@@ -20,7 +20,7 @@
 # (mod/command.sh) or from the MENUSCREEN GEM screen. Reboot the MMI after
 # install, uninstall and restore.
 
-VERSION="0.2.1"
+VERSION="0.2.2"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
