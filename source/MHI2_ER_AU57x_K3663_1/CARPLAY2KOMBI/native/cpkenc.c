@@ -26,6 +26,7 @@ extern u32 fwrite(const void *data, u32 size, u32 count, FILE *file);
 extern int fprintf(FILE *file, const char *format, ...);
 extern int fflush(FILE *file);
 extern int fclose(FILE *file);
+extern int usleep(u32 microseconds);
 
 /* cpkstream.c: live streaming to the cluster */
 extern __attribute__((visibility("hidden"))) int cpkstream_active(void);
@@ -59,6 +60,9 @@ extern __attribute__((visibility("hidden"))) void cpkstream_frame(const u8 *data
 #define PROFILE_BASELINE 66
 #define BITS_BUFFER (256u * 1024u)
 #define LOG_MAX_LINES 200
+/* How long to wait for the encoder's output of the frame just fed, polling */
+#define DRAIN_WAIT_US 30000
+#define DRAIN_POLL_US 2000
 
 #define LOG(...) \
 	do { \
@@ -129,6 +133,9 @@ static FILE *log_file;
 static u32 log_lines;
 static u32 written_bytes;
 static u32 frames;
+/* Frames given to the encoder and frames that came out of it */
+static u32 frames_fed;
+static u32 frames_out;
 static u8 bits[BITS_BUFFER];
 
 static int resolve(void)
@@ -189,13 +196,26 @@ static int setup(const u32 *source)
 	return encoder != 0;
 }
 
-/* Hands whatever the encoder has finished to the recording and/or the live stream */
+/*
+ * Hands whatever the encoder has finished to the recording and/or the live stream.
+ * Waits up to DRAIN_WAIT_US for the frame just fed: without the wait it only came out
+ * with the next CarPlay frame, which on a still screen can be seconds later
+ */
 static void drain(int recording, int streaming)
 {
 	u32 bytes = 0;
+	u32 waited = 0;
 	int status;
 
-	while ((status = bits_available(encoder, &bytes, 0, 0)) == 0 && bytes) {
+	for (;;) {
+		status = bits_available(encoder, &bytes, 0, 0);
+		if (status != 0 || !bytes) {
+			if (frames_out >= frames_fed || waited >= DRAIN_WAIT_US)
+				break;
+			usleep(DRAIN_POLL_US);
+			waited += DRAIN_POLL_US;
+			continue;
+		}
 		if (bytes > BITS_BUFFER) {
 			LOG("frame %u: %u bytes is too big, dropped\n", frames, bytes);
 			return;
@@ -213,8 +233,12 @@ static void drain(int recording, int streaming)
 			cpkstream_frame(bits, bytes);
 		if (frames < 5)
 			LOG("frame %u: %u bytes\n", frames, bytes);
+		frames_out++;
 		bytes = 0;
 	}
+	/* A frame that gave no output: count again from here instead of waiting on every frame */
+	if (frames_out < frames_fed)
+		frames_out = frames_fed;
 }
 
 static void stop(void)
@@ -273,6 +297,8 @@ __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface)
 		status = encoder_feed(encoder, rgba, 0, 0, picture_params);
 		if (status != 0 || frames < 5)
 			LOG("frame %u: FeedFrame %d\n", frames, status);
+		if (status == 0)
+			frames_fed++;
 	}
 	drain(recording, streaming);
 	frames++;

@@ -54,8 +54,8 @@ extern void *memset(void *to, int value, u32 size);
 #define PROGRAM 1
 #define STREAM_TYPE_H264 0x1b
 
-/* PTS runs this far ahead of the PCR, in 90 kHz ticks (200 ms) */
-#define PTS_DELAY 18000
+/* PTS runs this far ahead of the PCR, in 90 kHz ticks (60 ms): the cluster shows each frame this late */
+#define PTS_DELAY 5400
 #define KEEPALIVE_US 100000
 #define TRIGGER_CHECK_US 50000
 
