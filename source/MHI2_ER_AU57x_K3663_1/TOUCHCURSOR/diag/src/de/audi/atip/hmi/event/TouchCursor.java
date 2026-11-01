@@ -3,6 +3,8 @@ package de.audi.atip.hmi.event;
 import de.audi.atip.hmi.HMITerminal;
 import de.audi.atip.hmi.IRootWindow;
 import de.audi.atip.hmi.view.IGUIManager;
+import de.audi.atip.timer.Timer;
+import de.audi.atip.timer.TimerListener;
 import de.audi.tghu.fwhmi.AbstractWindow;
 import de.audi.tghu.hmi.view.HWGManager;
 import de.audi.tghu.hmi.view.RedrawContext;
@@ -20,6 +22,10 @@ import fi.hybrid.hwg.Composite;
  * and repaints through IRootWindow.repaint(), the HMI's normal paint call.
  * Only called on the HMI thread, from event dispatch, which is also the
  * thread that paints.
+ *
+ * The cursor hides itself after HIDE_AFTER_MS without touchpad use. The hide
+ * timer goes through TimerSyncer, which posts the timeout as an event, so it
+ * also runs on the HMI thread (as for the radio preset popup's hide timer).
  */
 final class TouchCursor {
 
@@ -31,12 +37,15 @@ final class TouchCursor {
     // In front of everything, as for WidgetFinderDiag
     private static final int DEPTH_FRONT = Integer.MIN_VALUE;
     private static final int FILL_COLOR = 0xF0FFFFFF;
+    private static final long HIDE_AFTER_MS = 5000;
 
     private static HWGManager hwg = null;
     private static Composite composite = null;
     private static Bitmap texture = null;
     private static boolean attached = false;
     private static boolean failed = false;
+    private static Timer hideTimer = null;
+    private static ATIPEventListener lastReceiver = null;
 
     private TouchCursor() {
     }
@@ -56,9 +65,26 @@ final class TouchCursor {
                 TouchDiag.log("D cursor shown attached=" + attached);
             }
             ((IRootWindow) receiver).repaint();
+            lastReceiver = receiver;
+            restartHideTimer();
         } catch (Throwable t) {
             fail(t);
         }
+    }
+
+    private static void restartHideTimer() {
+        if (hideTimer == null) {
+            TimerListener onTimeout = new TimerListener() {
+                public void fireTimer(Timer timer) {
+                    hide(lastReceiver);
+                }
+
+                public void cancelTimer(Timer timer) {
+                }
+            };
+            hideTimer = new Timer("TouchCursorHideTimer", HIDE_AFTER_MS, true, new TimerSyncer(onTimeout));
+        }
+        hideTimer.restart();
     }
 
     static void hide(ATIPEventListener receiver) {
