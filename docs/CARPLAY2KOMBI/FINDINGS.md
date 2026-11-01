@@ -12,7 +12,7 @@ It isn't installed by MIB2-Patcher, and is not on the test unit any more.
 To try it by hand over SSH (see [Passthrough: progress](#passthrough-progress)):
 1. Copy `libcpkhook.so` and `cpk-cluster.sh` to `/mnt/app/cpk/`.
 2. Back up `/mnt/system/etc/eso/production/smartphone_integrator.json` and add `"LD_PRELOAD=/mnt/app/cpk/libcpkhook.so"` to `dio_manager`'s `envs`, then reboot the MMI.
-3. `sh /mnt/app/cpk/cpk-cluster.sh on [delay [fill [repeats]]]`, and `off` to get the map back.
+3. `sh /mnt/app/cpk/cpk-cluster.sh on [delay [rate [repeats]]]`, and `off` to get the map back. `/ramdisk/cpk/stream.log` shows what the stream does.
 
 To remove it: `cpk-cluster.sh off`, put the backed-up `smartphone_integrator.json` back, delete `/mnt/app/cpk` and `/ramdisk/cpk`, then reboot the MMI.
 Rebooting matters: until then `smartphone_integrator` still starts CarPlay with the old `LD_PRELOAD`.
@@ -184,9 +184,15 @@ A 15-second recording of it, packed as TS and sent with `cpkinject`, **plays cle
 
 [`cpkstream.c`](../../source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native/cpkstream.c) streams the encoder output to the cluster live, and **live CarPlay shows in the cluster**.
 
-- Each frame becomes PAT, PMT, a PCR packet and the video PES (PTS 60 ms after the PCR, from the monotonic clock), padded with null packets to whole 12032-byte blocks.
-- A lock-free ring (32 blocks) feeds a writer thread that writes the blocks to `/dev/mlb/isoTX2`, so CarPlay's own display never waits on the MOST bus.
-  If the ring is full, the frame is dropped and the next one is forced to be an IDR. With no new frames, the thread sends a PCR every 100 ms.
+- A writer thread sends one continuous stream at a constant rate (`rate`, default 4000 kbit/s), in whole 12032-byte blocks.
+  Each block starts with PAT, PMT and a PCR; the other 61 packets are video from a packet queue, or null packets when the queue is empty.
+  Frames aren't padded, so small frames share a block.
+- The PCR counts the packets sent at the stream rate. When the writer puts a frame's first packet into a block, it stamps the frame's PTS `delay` (default 50 ms) ahead of that packet's PCR.
+  So the cluster shows each frame on time, without waiting for the next one, and repeats are off by default.
+- The encoder packs frames straight into the queue (2048 packets), so CarPlay's own display never waits on the MOST bus.
+  A frame that would wait more than 150 ms behind others is dropped, and the next one is forced to be an IDR. An IDR's first packet carries the random access flag.
+- Every 2 s the writer adds a line to `/ramdisk/cpk/stream.log`: blocks and the rate actually sent, video and null packets, the longest queue, drops, and how long writes took.
+  If writes take longer than one block lasts (24 ms at 4000 kbit/s), the channel is slower than `rate`; set `rate` below the rate the log shows.
 - The encoder is drained right after each frame (up to 30 ms). Without that, a frame only came out with the next CarPlay frame, which made the cluster lag on a still screen.
 - The hook must be built with `-mno-unaligned-access`: the MMX traps unaligned word stores, and clang merged byte writes of the PES header into one.
 
@@ -226,7 +232,13 @@ So the cluster finds the end of a frame, but shows a decoded frame only when the
    If it's missing, rewrite the SPS in the hook with `max_num_reorder_frames` 0 and `max_dec_frame_buffering` 1. `pic_order_cnt_type` 2 also lets a decoder show frames in decode order, but changing it means rewriting every slice header too.
 5. **Don't block CarPlay's render thread.** `drain` waits up to 30 ms per frame on CarPlay's render thread. Moving the drain and the repeats to the encoder's own thread keeps the main screen smooth. It doesn't change the cluster's delay.
 
-Put each change behind its own file in `/ramdisk/cpk/`, like `delay`, `fill` and `repeat`, so the current behaviour stays the default while testing.
+Put each change behind its own file in `/ramdisk/cpk/`, like `delay`, `rate` and `repeat`, so the current behaviour stays the default while testing.
+
+**Status.** Ideas 1 to 3 are in [`cpkstream.c`](../../source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native/cpkstream.c) (see [Live streaming](#live-streaming)), in a form that makes idea 3 unnecessary: every frame has a PTS, so it doesn't need a following frame to be shown.
+The writer follows the approach of [harman-f/mhi2_altscreen_carplay](https://github.com/harman-f/mhi2_altscreen_carplay) (a constant-rate stream with the PCR counted from packets), written from its description, not its GPL code.
+On their MU1440 the channel takes about 12.2 Mbit/s; this unit's rate is still unknown, so `stream.log` reports it.
+It was checked on a PC, with the system calls replaced by a harness and synthetic frames at 30 fps: every frame arrived byte for byte, with correct continuity counters and PCR steps, and a PTS exactly 50 ms ahead of its first packet's PCR. That held on a channel slower than `rate` too.
+On an overloaded channel, frames were dropped and every restart began with an IDR. It hasn't been built for the MMX or tried on the car yet.
 
 ## How to repeat the checks
 
