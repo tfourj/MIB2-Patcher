@@ -26,8 +26,9 @@ build_lib() {
     shift
     for source in "$name" "$@"; do
         # ARM mode, soft-float calls (NVIDIA's libraries use softfp, which passes floats the same way),
-        # nothing the QNX loader lacks (unwind tables, stack protector)
-        "$LLVM/clang" -target armv7a-none-eabi -marm -mfloat-abi=soft -fPIC -O2 -Wall -Wextra \
+        # nothing the QNX loader lacks (unwind tables, stack protector). No unaligned loads or stores:
+        # the MMX traps them (a merged word store into a byte array killed dio_manager)
+        "$LLVM/clang" -target armv7a-none-eabi -marm -mfloat-abi=soft -mno-unaligned-access -fPIC -O2 -Wall -Wextra \
             -ffreestanding -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables \
             -c "$source.c" -o "build/$source.o"
         objects+=("build/$source.o")
