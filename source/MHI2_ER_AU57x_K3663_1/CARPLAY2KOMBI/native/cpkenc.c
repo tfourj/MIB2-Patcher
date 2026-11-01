@@ -58,6 +58,15 @@ extern __attribute__((visibility("hidden"))) void cpkstream_frame(const u8 *data
 #define IDR_PERIOD 15
 #define PROFILE_BASELINE 66
 #define BITS_BUFFER (256u * 1024u)
+#define LOG_MAX_LINES 200
+
+#define LOG(...) \
+	do { \
+		if (log_lines < LOG_MAX_LINES) { \
+			log_lines++; \
+			fprintf(log_file, __VA_ARGS__); \
+		} \
+	} while (0)
 
 /* NvMediaRect: four u16 */
 struct nvm_rect {
@@ -116,6 +125,8 @@ static u32 picture_params[64];
 
 static FILE *video_file;
 static FILE *log_file;
+/* Lines written to the log; it stops at LOG_MAX_LINES, so errors on every frame can't fill /ramdisk */
+static u32 log_lines;
 static u32 written_bytes;
 static u32 frames;
 static u8 bits[BITS_BUFFER];
@@ -148,7 +159,7 @@ static int setup(const u32 *source)
 	} aspect = { (float)OUT_WIDTH / OUT_HEIGHT };
 
 	if (!resolve()) {
-		fprintf(log_file, "setup: NvMedia functions not found\n");
+		LOG("setup: NvMedia functions not found\n");
 		return 0;
 	}
 	device = device_create();
@@ -172,7 +183,7 @@ static int setup(const u32 *source)
 	encoder_init[0x30 / 4] = (u32)encoder_config;
 	encoder = mixer ? encoder_create(device, ENCODER_H264, encoder_init, INPUT_RGBA, 4, 4, device) : 0;
 
-	fprintf(log_file, "setup: source type %u %ux%u, device %08x rgba %08x mixer %08x encoder %08x\n",
+	LOG("setup: source type %u %ux%u, device %08x rgba %08x mixer %08x encoder %08x\n",
 		source[0], source[1], source[2], (u32)device, (u32)rgba, (u32)mixer, (u32)encoder);
 	fflush(log_file);
 	return encoder != 0;
@@ -186,12 +197,12 @@ static void drain(int recording, int streaming)
 
 	while ((status = bits_available(encoder, &bytes, 0, 0)) == 0 && bytes) {
 		if (bytes > BITS_BUFFER) {
-			fprintf(log_file, "frame %u: %u bytes is too big, dropped\n", frames, bytes);
+			LOG("frame %u: %u bytes is too big, dropped\n", frames, bytes);
 			return;
 		}
 		status = get_bits(encoder, 0, &bytes, bits);
 		if (status != 0) {
-			fprintf(log_file, "frame %u: GetBits %d\n", frames, status);
+			LOG("frame %u: GetBits %d\n", frames, status);
 			return;
 		}
 		if (recording && written_bytes + bytes <= ENC_MAX_BYTES) {
@@ -201,7 +212,7 @@ static void drain(int recording, int streaming)
 		if (streaming)
 			cpkstream_frame(bits, bytes);
 		if (frames < 5)
-			fprintf(log_file, "frame %u: %u bytes\n", frames, bytes);
+			LOG("frame %u: %u bytes\n", frames, bytes);
 		bytes = 0;
 	}
 }
@@ -255,13 +266,13 @@ __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface)
 
 	status = render_surface(mixer, rgba, 0, &primary, 0, 0, 0);
 	if (status != 0 || frames < 5)
-		fprintf(log_file, "frame %u: RenderSurface %d\n", frames, status);
+		LOG("frame %u: RenderSurface %d\n", frames, status);
 	if (status == 0) {
 		/* Bit 0: IDR with SPS and PPS, for the first frame, a stream start or after a drop */
 		picture_params[0] = frames == 0 || cpkstream_take_keyframe() ? 1 : 0;
 		status = encoder_feed(encoder, rgba, 0, 0, picture_params);
 		if (status != 0 || frames < 5)
-			fprintf(log_file, "frame %u: FeedFrame %d\n", frames, status);
+			LOG("frame %u: FeedFrame %d\n", frames, status);
 	}
 	drain(recording, streaming);
 	frames++;
