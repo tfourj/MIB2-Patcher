@@ -6,4 +6,6 @@ import de.audi.atip.hmi.view.Screen;
 /** Compile-only stub. The real interface lives in lsd.jxe. */
 public interface IRootWindow extends ATIPEventListener {
     Screen getCurrentScreen();
+
+    void repaint();
 }
