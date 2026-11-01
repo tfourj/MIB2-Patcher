@@ -64,7 +64,7 @@ LSD_BAK="$LSD_SH.menuscreen.bak"
 JARS="$HMI/lsd/jars"
 JAR_NAME="MENUSCREEN.jar"
 ESD_SRC="$PKG/esd/MENUSCREEN.esd"
-ESD_LINK="$HMI/engdefs/z_mib2patcher_MENUSCREEN.esd"
+ESD_LINK="$HMI/engdefs/z_0mib2patcher_MENUSCREEN.esd"
 MARKER="#MENUSCREEN"
 
 # Boot guard flags, seen by lsd.sh as /mnt/persist on the MMX

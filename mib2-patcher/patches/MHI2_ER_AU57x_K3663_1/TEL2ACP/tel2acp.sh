@@ -68,13 +68,13 @@ LSD_BAK="$LSD_SH.tel2acp.bak"
 JARS="$HMI/lsd/jars"
 JAR_NAME="TEL2ACP.jar"
 ESD_SRC="$PKG/esd/TEL2ACP.esd"
-ESD_LINK="$HMI/engdefs/z_mib2patcher_TEL2ACP.esd"
-# Set_CarPlay_Custom submenu. Sorts after z_mib2patcher_TEL2ACP.esd, so its parent screen exists first
+ESD_LINK="$HMI/engdefs/z_0mib2patcher_TEL2ACP.esd"
+# Set_CarPlay_Custom submenu. Sorts after z_0mib2patcher_TEL2ACP.esd, so its parent screen exists first
 ESD_CUSTOM_SRC="$PKG/esd/TEL2ACP_custom.esd"
-ESD_CUSTOM_LINK="$HMI/engdefs/z_mib2patcher_TEL2ACP_custom.esd"
-# Set_CarPlay_Keys submenu, also sorts after z_mib2patcher_TEL2ACP.esd
+ESD_CUSTOM_LINK="$HMI/engdefs/z_0mib2patcher_TEL2ACP_custom.esd"
+# Set_CarPlay_Keys submenu, also sorts after z_0mib2patcher_TEL2ACP.esd
 ESD_KEYS_SRC="$PKG/esd/TEL2ACP_keys.esd"
-ESD_KEYS_LINK="$HMI/engdefs/z_mib2patcher_TEL2ACP_keys.esd"
+ESD_KEYS_LINK="$HMI/engdefs/z_0mib2patcher_TEL2ACP_keys.esd"
 MARKER="#TEL2ACP"
 
 # Boot guard flags. lsd.sh and the patched class see /mnt/persist on the MMX

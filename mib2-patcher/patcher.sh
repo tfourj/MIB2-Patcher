@@ -63,9 +63,11 @@ LOG="$LOGS/patcher.log"
 # Logs on the unit bigger than this are moved to <log>.old, so they can't fill /mnt/persist
 LOG_MAX=65536
 
-# The root GEM screen. The patch screens use the z_mib2patcher_ prefix, so they sort after it
+# The root GEM screen. The patch screens use the z_0mib2patcher_ prefix, so they sort after it.
+# The 0 sorts them before M.I.B.'s z_Launcher-sda0.esd, a link to the SD card: without the
+# card it points nowhere and GEM doesn't load the screens that sort after it
 ESD_SRC="$UNIT_DIR/esd/MIB2_PATCHER.esd"
-ESD_LINK="$ENGDEFS/z_mib2patcher.esd"
+ESD_LINK="$ENGDEFS/z_0mib2patcher.esd"
 
 # M.I.B. lock files: do not run while M.I.B. is flashing, backing up or rebooting
 SHMEM="/net/rcc/dev/shmem"
@@ -342,6 +344,13 @@ remove_legacy_links() {
 				log "removed old GEM screen ${link##*/}"
 			fi
 		done
+	done
+	# Up to 1.2.3 the links were z_mib2patcher*.esd, which sort after M.I.B.'s link
+	for link in "$ENGDEFS"/z_mib2patcher*.esd; do
+		if [ -L "$link" ] || [ -f "$link" ]; then
+			rm -f "$link" 2> /dev/null || on -f mmx rm -f "$link" 2> /dev/null
+			log "removed old GEM screen ${link##*/}"
+		fi
 	done
 }
 

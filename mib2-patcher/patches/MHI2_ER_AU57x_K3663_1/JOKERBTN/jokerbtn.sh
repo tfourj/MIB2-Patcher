@@ -271,13 +271,13 @@ remove_patch_lines() {
 }
 
 has_gem_link() {
-	[ -L "$ENGDEFS/z_mib2patcher_JOKERBTN.esd" ] || [ -f "$ENGDEFS/z_mib2patcher_JOKERBTN.esd" ]
+	[ -L "$ENGDEFS/z_0mib2patcher_JOKERBTN.esd" ] || [ -f "$ENGDEFS/z_0mib2patcher_JOKERBTN.esd" ]
 }
 
 remove_gem_link() {
 	removed=0
 	for name in $ESD_NAMES; do
-		link="$ENGDEFS/z_mib2patcher_$name.esd"
+		link="$ENGDEFS/z_0mib2patcher_$name.esd"
 		if [ -L "$link" ] || [ -f "$link" ]; then
 			rm -f "$link" 2> /dev/null || on -f mmx rm -f "$link" 2> /dev/null
 			removed=1
@@ -508,13 +508,13 @@ do_gem_on() {
 	done
 	mount_rw
 	for name in $ESD_NAMES; do
-		link="$ENGDEFS/z_mib2patcher_$name.esd"
+		link="$ENGDEFS/z_0mib2patcher_$name.esd"
 		rm -f "$link" 2> /dev/null
 		ln -s "$ESD_DIR/$name.esd" "$link" 2> /dev/null || on -f mmx ln -s "$ESD_DIR/$name.esd" "$link" 2> /dev/null
 	done
 	mount_ro
 	for name in $ESD_NAMES; do
-		[ -L "$ENGDEFS/z_mib2patcher_$name.esd" ] || [ -f "$ENGDEFS/z_mib2patcher_$name.esd" ] || die "could not link $ENGDEFS/z_mib2patcher_$name.esd"
+		[ -L "$ENGDEFS/z_0mib2patcher_$name.esd" ] || [ -f "$ENGDEFS/z_0mib2patcher_$name.esd" ] || die "could not link $ENGDEFS/z_0mib2patcher_$name.esd"
 	done
 	log "GEM screens added, they show up after the next reboot"
 }
