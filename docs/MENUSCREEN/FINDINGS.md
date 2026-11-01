@@ -11,7 +11,7 @@ Source analysed: `MIB BACKUP/WHOLE MIB/backup/MU1425-.../MU1425-lsd.jxe`, with t
   A hidden tile can be made visible and given its own text and action by replacing the small 3D tile class `ButtonWidget3D`.
 - Screens come from HMI bundles. The bundle is picked by screen ID / 10000, and IDs like 90 are unused.
   A new `HMIBundle` can be registered at runtime through the firmware's OSGi registry, and its screen shown with `HMIServiceSM.showScreen`.
-- The state machine stays in the MENU state while the new screen is up. HK_MENU re-enters MENU from anywhere, so MENU (and BACK, handled by the screen) brings the main menu back.
+- The state machine stays in the MENU state while the new screen is up. BACK and MENU don't redraw that state on their own, so the patch asks the state machine to show its current screen again, as it does when a popup closes.
 
 ## How the MENU tiles work
 
@@ -55,10 +55,10 @@ with fonts from `SystemScreenFactory.getFonts(0, terminal)` and colours from `ge
 
 ## Leaving the screen
 
-| Key | In the MENU state (26) | What the new screen does |
+| Key | In the MENU screen states (34, 35) | What the patch does |
 |---|---|---|
-| MENU (`HK_MENU` 1400) | state 165 → 26, re-enters MENU and shows its screen | nothing, the state machine handles it |
-| BACK (`KEY_BACK` 15, `HK_RETURN` 121) | not handled | fires `HK_MENU` itself |
+| MENU (`HK_MENU` 1400) | 34 → 34 or 35 → 35, no redraw | shows the state machine's screen again after the event |
+| BACK (`KEY_BACK` 15, `HK_RETURN` 121) | not handled | the screen shows the state machine's screen again |
 | NAV, MEDIA, ... | normal transitions | nothing, the state machine handles it |
 
 ## The three buttons
@@ -81,14 +81,27 @@ GEM is `/eso/hmi/lsd/jars/AppDevelopment.jar`; M.I.B. replaces it with its own G
 **Restart CarPlay.** The HMI already runs shell commands with `Runtime.getRuntime().exec(String[])`, for example `ComboKeyDetector.reMountFs` and `EngineeringApp$ProcessExecuter`.
 The button runs `/bin/sh -c` with the firmware's USB power scripts (see the CPRESTART patch) on a background thread, so the HMI never waits for it.
 
-## BACK
+## BACK and MENU
 
-The BACK hard key never reaches a screen's `keyPressed`. `de.audi.tghu.fwhmi.ApplicationManagerGUI.keyPressed` gets it (key 15) and fires `HK_RETURN` (121) for the terminal, and for terminal 1 too when it came from terminal 0.
-The MENU state (26) and its parents have no `HK_RETURN` transition, so BACK did nothing on the screen in the first car test, while MENU (`HK_MENU`, 1400) worked.
+In 0.2.2 neither key left the screen in the car. The patch log never showed the filter's line, so the BACK key never became `HK_RETURN`.
 
-The patch adds a `BaseJobFilter` with `EventDispatcherAdmin.addEventFilter`, like `HMIEventQueue$HKFilter` and `DrvSchoolProcessor`.
-While `HMIService.getCurrentScreenID()` is the MENUSCREEN screen, it drops `HK_RETURN` for that terminal and fires `HK_MENU` instead.
-The new event is posted from a short-lived thread, because the filter runs inside the event queue's `enqueue`.
+**BACK** goes to the screen first. `KeyEventDistributor.keyPressed` calls `sendHKReturnToScreen` for key 15, which passes it to the current screen's `keyPressed`.
+Only if the screen doesn't consume it do the hard key listeners get it, and `ApplicationManagerGUI.keyPressed` fires `HK_RETURN` (121) for the terminal, and for terminal 1 too when it came from terminal 0.
+The MENU state (26) and its parents have no `HK_RETURN` transition.
+
+**MENU** goes to `HardKeyManager.triggerKeyEvent`, which fires `HK_MENU` (1400) through `HMIService.fireSMEvent`, a `StateMachineEvent` posted to the HMI event queue.
+The MENU screen is state 34 or 35 (children of 36, under 26), and both handle `HK_MENU` themselves with a transition back into the same state.
+`AbstractStateMachine.jumpToState` skips the screen update when the new state is the one already active, unless the screen is marked for reinit.
+So `HK_MENU` changes nothing while the patch's screen covers MENU, and the 0.2.2 BACK handler, which fired `HK_MENU`, did nothing either.
+
+**The fix** shows the state machine's screen again, the same way `SMI.stopPopup` does when a popup closes:
+`IFrameworkAccess.getSMInterpreter()` (the `SMI`) → `getSMTerminal(terminal)` → `getActiveSubterminalStateMachine()` → `reactivateUI()`.
+It has to run on the HMI event thread, where the state machine runs.
+
+- BACK: the screen consumes key 15 and calls it from `keyPressed`, which already runs on that thread.
+- MENU: a `BaseJobFilter` added with `EventDispatcherAdmin.addEventFilter`, like `HMIEventQueue$HKFilter` and `DrvSchoolProcessor`, sees `HK_MENU` for the terminal while `HMIService.getCurrentScreenID()` is the MENUSCREEN screen.
+  It lets the event through and queues a `RunnableEvent` right behind it, the firmware's own event for running code on that thread (`FwHMI.postRunnable`).
+  It does the same for `HK_RETURN`, which it drops, in case BACK ever reaches the state machine.
 
 ## Boot guard
 

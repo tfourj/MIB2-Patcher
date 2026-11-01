@@ -145,10 +145,10 @@ That tile stays visible, shows its own text and, when pressed, opens the screen 
 The screen comes from a new HMI bundle, registered at runtime through the firmware's own OSGi registry, the same way the firmware's apps register theirs.
 It takes a free bundle ID from 26 to 31 (screen 260000 to 310000), because the registry only looks bundles up in an array sized at startup for IDs up to 31.
 It is built like the firmware's simple message screen, with the system fonts, colours and border.
-It is shown with the same call the state machine uses. The state machine stays in the MENU state, which is why MENU brings the main menu back.
+It is shown with the same call the state machine uses. The state machine stays in the MENU state while it shows.
 
-The screen handles the knob itself. BACK never reaches a screen: the firmware's `ApplicationManagerGUI` turns it into the state machine event `HK_RETURN`, which the MENU state ignores.
-So the patch adds a filter to the HMI event queue, as the firmware's own filters do, that swaps `HK_RETURN` for `HK_MENU` while its screen is showing.
+The screen handles the knob itself. BACK and MENU need help: the MENU state has no BACK transition, and its MENU transition goes back into the same state, which the state machine doesn't redraw.
+So BACK on the screen, and a filter in the HMI event queue for MENU (as the firmware's own filters do), ask the state machine to show its current screen again, the way the firmware does when a popup closes. That brings the main menu back.
 
 The buttons do what the firmware already does:
 
