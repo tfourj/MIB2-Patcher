@@ -26,6 +26,7 @@ struct timespec_qnx {
 
 extern int access(const char *path, int mode);
 extern int open(const char *path, int flags, ...);
+extern int read(int fd, void *data, u32 size);
 extern int write(int fd, const void *data, u32 size);
 extern int close(int fd);
 extern int usleep(u32 microseconds);
@@ -54,8 +55,12 @@ extern void *memset(void *to, int value, u32 size);
 #define PROGRAM 1
 #define STREAM_TYPE_H264 0x1b
 
-/* PTS runs this far ahead of the PCR, in 90 kHz ticks (60 ms): the cluster shows each frame this late */
+/*
+ * Default: PTS runs this far ahead of the PCR, in 90 kHz ticks (60 ms), and the cluster
+ * shows each frame this late. DELAY_FILE can change it (see read_delay)
+ */
 #define PTS_DELAY 5400
+#define DELAY_FILE "/ramdisk/cpk/delay"
 #define KEEPALIVE_US 100000
 #define TRIGGER_CHECK_US 50000
 
@@ -76,6 +81,9 @@ static u8 cc_pat, cc_pmt, cc_video;
 
 static volatile int streaming;
 static volatile int need_keyframe;
+/* Set by the writer when streaming starts, read by the render thread */
+static volatile u32 pts_delay = PTS_DELAY;
+static volatile int use_pts = 1;
 static int clock_id = -1;
 static int writer_started;
 
@@ -201,14 +209,48 @@ static u32 pad_block(u8 *out, u32 used)
 	return used;
 }
 
+/*
+ * The delay setting from DELAY_FILE: milliseconds the PTS runs ahead of the PCR,
+ * or a negative number for no PTS at all (the cluster shows a frame once decoded).
+ * Read when streaming starts; without the file PTS_DELAY applies
+ */
+static void read_delay(void)
+{
+	char text[16];
+	int fd = open(DELAY_FILE, 0);
+	int n, i, value = 0, negative = 0;
+
+	pts_delay = PTS_DELAY;
+	use_pts = 1;
+	if (fd < 0)
+		return;
+	n = read(fd, text, sizeof(text) - 1);
+	close(fd);
+	if (n <= 0)
+		return;
+	for (i = 0; i < n; i++) {
+		if (text[i] == '-' && i == 0)
+			negative = 1;
+		else if (text[i] >= '0' && text[i] <= '9')
+			value = value * 10 + (text[i] - '0');
+		else
+			break;
+	}
+	if (negative)
+		use_pts = 0;
+	else if (value <= 1000)
+		pts_delay = (u32)value * 90u;
+}
+
 /* Packs one access unit into stage, padded to whole blocks. Returns blocks, 0 if too big */
 static u32 pack_frame(const u8 *data, u32 len, u64 pcr)
 {
 	u8 header[14];
-	u64 pts = (pcr + PTS_DELAY) & 0x1ffffffffull;
+	u32 header_len;
+	u64 pts = (pcr + pts_delay) & 0x1ffffffffull;
 	u32 used, chunk, first_len, packets_needed;
 
-	/* PES header with PTS; length 0 = unbounded, allowed for video */
+	/* PES header, length 0 = unbounded, allowed for video */
 	header[0] = 0;
 	header[1] = 0;
 	header[2] = 1;
@@ -216,28 +258,36 @@ static u32 pack_frame(const u8 *data, u32 len, u64 pcr)
 	header[4] = 0;
 	header[5] = 0;
 	header[6] = 0x80;
-	header[7] = 0x80;
-	header[8] = 5;
-	header[9] = (u8)(0x21 | ((pts >> 29) & 0x0e));
-	header[10] = (u8)(pts >> 22);
-	header[11] = (u8)(0x01 | ((pts >> 14) & 0xfe));
-	header[12] = (u8)(pts >> 7);
-	header[13] = (u8)(0x01 | ((pts << 1) & 0xfe));
+	if (use_pts) {
+		header[7] = 0x80;
+		header[8] = 5;
+		header[9] = (u8)(0x21 | ((pts >> 29) & 0x0e));
+		header[10] = (u8)(pts >> 22);
+		header[11] = (u8)(0x01 | ((pts >> 14) & 0xfe));
+		header[12] = (u8)(pts >> 7);
+		header[13] = (u8)(0x01 | ((pts << 1) & 0xfe));
+		header_len = 14;
+	} else {
+		/* No PTS: the cluster shows the frame as soon as it is decoded */
+		header[7] = 0;
+		header[8] = 0;
+		header_len = 9;
+	}
 
-	packets_needed = 3 + (len + sizeof(header) + 183) / 184;
+	packets_needed = 3 + (len + header_len + 183) / 184;
 	if (packets_needed > STAGE_BLOCKS * PACKETS_PER_BLOCK)
 		return 0;
 
 	used = put_tables(stage, pcr, &cc_pat, &cc_pmt);
 
 	/* First packet: PES header and the start of the frame */
-	first_len = len < 184 - sizeof(header) ? len : 184 - sizeof(header);
+	first_len = len < 184 - header_len ? len : 184 - header_len;
 	{
 		u8 first[184];
 
-		memcpy(first, header, sizeof(header));
-		memcpy(first + sizeof(header), data, first_len);
-		put_packet(stage + used * PACKET, PID_VIDEO, 1, first, sizeof(header) + first_len, &cc_video, 0);
+		memcpy(first, header, header_len);
+		memcpy(first + header_len, data, first_len);
+		put_packet(stage + used * PACKET, PID_VIDEO, 1, first, header_len + first_len, &cc_video, 0);
 		used++;
 	}
 	data += first_len;
@@ -276,6 +326,7 @@ static void *writer(void *argument)
 		}
 		if (!was_streaming) {
 			/* Drop anything left from before and start with a keyframe */
+			read_delay();
 			ring_tail = ring_head;
 			need_keyframe = 1;
 			was_streaming = 1;
