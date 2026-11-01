@@ -56,8 +56,8 @@ extern void *memset(void *to, int value, u32 size);
 #define STREAM_TYPE_H264 0x1b
 
 /*
- * Default: PTS runs this far ahead of the PCR, in 90 kHz ticks (60 ms), and the cluster
- * shows each frame this late. DELAY_FILE can change it (see read_delay)
+ * Frames have no PTS unless DELAY_FILE sets a delay (see read_delay); this is the
+ * fallback delay in 90 kHz ticks (60 ms) for a setting that can't be read
  */
 #define PTS_DELAY 5400
 #define DELAY_FILE "/ramdisk/cpk/delay"
@@ -83,7 +83,7 @@ static volatile int streaming;
 static volatile int need_keyframe;
 /* Set by the writer when streaming starts, read by the render thread */
 static volatile u32 pts_delay = PTS_DELAY;
-static volatile int use_pts = 1;
+static volatile int use_pts;
 static int clock_id = -1;
 static int writer_started;
 
@@ -210,9 +210,9 @@ static u32 pad_block(u8 *out, u32 used)
 }
 
 /*
- * The delay setting from DELAY_FILE: milliseconds the PTS runs ahead of the PCR,
- * or a negative number for no PTS at all (the cluster shows a frame once decoded).
- * Read when streaming starts; without the file PTS_DELAY applies
+ * The delay setting from DELAY_FILE, read when streaming starts. By default (no file,
+ * or a negative number) frames have no PTS and the cluster shows each one once decoded.
+ * A number of milliseconds gives every frame a PTS that far ahead of the PCR
  */
 static void read_delay(void)
 {
@@ -221,7 +221,7 @@ static void read_delay(void)
 	int n, i, value = 0, negative = 0;
 
 	pts_delay = PTS_DELAY;
-	use_pts = 1;
+	use_pts = 0;
 	if (fd < 0)
 		return;
 	n = read(fd, text, sizeof(text) - 1);
@@ -236,10 +236,10 @@ static void read_delay(void)
 		else
 			break;
 	}
-	if (negative)
-		use_pts = 0;
-	else if (value <= 1000)
+	if (!negative && i > 0 && value <= 1000) {
+		use_pts = 1;
 		pts_delay = (u32)value * 90u;
+	}
 }
 
 /* Packs one access unit into stage, padded to whole blocks. Returns blocks, 0 if too big */
