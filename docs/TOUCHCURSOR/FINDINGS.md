@@ -64,7 +64,7 @@ Open questions, which the diagnostic answers:
 1. Which touchpad events reach the HMI while CarPlay is on screen, and does a swipe also send keys? See [Test 1](#test-1-what-the-touchpad-sends-in-carplay).
 2. Does the iPhone accept touches once `inputFeatures` is 13?
 3. Does an HMI bitmap show above the CarPlay video? (Not covered by the diagnostic yet.)
-4. Does another keypanel mode (map panning, 6) send finger moves on the CarPlay screen?
+4. Does another keypanel mode (map panning, 6) send finger moves on the CarPlay screen? Yes, see [Test 2](#test-2-map-panning-mode-on-the-carplay-screen).
 
 ## Test 1: what the touchpad sends in CarPlay
 
@@ -81,6 +81,17 @@ The keypanel runs in a mode the terminal mode app sets itself: `TMDSIKeyPanelCon
 `KbdHandler` doesn't know those modes. Map panning (`RECOGNIZERMODE_MAP_PANNING` 6) is set by the map screen with `ScreenWidget.setDesiredRecognizerMode(6, null)`, which ends in `KbdService.setRecognizerMode(6, null)` with the mode's default settings.
 
 So a cursor needs either another keypanel mode with finger moves, or the encoder ticks (coarse, a few per swipe). The press position is enough for an absolute tap without a cursor.
+
+## Test 2: map panning mode on the CarPlay screen
+
+Logged with TOUCHDIAG 0.2.0 and `/ramdisk/touchdiag.mode` = 6. `KbdService.setRecognizerMode(6, null)` returned true on the first press (`KbdHandler` thought it was in mode 17).
+
+- Drags now send `TOUCH_PAD_MOVED_REL` (10912) about every 50 ms. x and y are signed 8-bit steps (255 is -1), seen from -27 to +35 per event. That is a mouse-like delta, enough to move a cursor smoothly.
+- The touchpad encoder keys (64, 65) are gone, so the pad no longer turns into knob ticks.
+- Presses still carry the position. Pressing near an edge still sends a joystick event with key source 0 (not 9), which the app turns into CarPlay buttons 5 to 8, and the zone keys 69 to 76 (source 9) on release.
+- Three of the five drags sent no moves. Each of them started near an edge, and the diagnostic re-applied the mode on each press, so it is unclear whether the edge zones or the re-apply cut them off.
+
+So in mode 6 a cursor can follow the finger. A patch must also drop the joystick event that comes with a touchpad press (a JoystickEvent right after `TOUCH_PAD_PRESSED`), so the focus doesn't jump.
 
 ## Diagnostic
 
