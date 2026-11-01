@@ -201,8 +201,8 @@ A patch is a folder in `mib2-patcher/patches/<train>/` with one installer `.sh` 
 - It marks its `lsd.sh` lines with `#<PATCH>`, which is how `update` sees that it is installed.
 - It writes its log to `$PATCHER_LOGS/<PATCH>` and its backups to `$PATCHER_DATA/<PATCH>` when the patcher sets them,
   because its own folder on the unit is read-only.
-- Its main GEM screen uses `MIB2_Patcher` as parent and is linked into `/eso/hmi/engdefs` as `z_mib2patcher_<PATCH>.esd`,
-  so it sorts after the MIB2_Patcher screen.
+- Its main GEM screen uses `MIB2_Patcher` as parent and is linked into `/eso/hmi/engdefs` as `z_0mib2patcher_<PATCH>.esd`,
+  so it sorts after the MIB2_Patcher screen and before M.I.B.'s link to the SD card.
 - Its GEM entries run `patcher.sh <PATCH> <command>` from `/net/mmx/mnt/app/eso/mib2-patcher`.
 - Bump `VERSION` in `patcher.sh` only when the patcher itself changes.
 
