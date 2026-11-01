@@ -352,6 +352,13 @@ remove_gem_link() {
 	fi
 }
 
+# Runs one step of an update and logs its error output when it fails
+update_step() {
+	err=$("$@" 2>&1) && return 0
+	log "failed:     $* (${err:-no error output})"
+	return 1
+}
+
 # Copies the patcher and the train's patches from the card to the unit ($1 = 1
 # also when the card is not newer). Runs the new copy afterwards, so the GEM
 # screens and patches come from the new version
@@ -403,12 +410,12 @@ do_update() {
 
 	stage="$UNIT_DIR.new"
 	mount_rw
-	rm -rf "$stage" "$UNIT_DIR.old" 2> /dev/null
-	if ! { mkdir -p "$stage/patches" &&
-		cp "$src/patcher.sh" "$stage/patcher.sh" &&
-		cp -r "$src/esd" "$stage/esd" &&
-		cp -r "$src/patches/$TRAIN" "$stage/patches/$TRAIN" &&
-		echo "$TRAIN" > "$stage/train"; } 2> /dev/null
+	update_step rm -rf "$stage" "$UNIT_DIR.old" || { mount_ro; die "could not remove the leftovers of the last update, nothing changed"; }
+	if ! { update_step mkdir -p "$stage/patches" &&
+		update_step cp "$src/patcher.sh" "$stage/patcher.sh" &&
+		update_step cp -r "$src/esd" "$stage/esd" &&
+		update_step cp -r "$src/patches/$TRAIN" "$stage/patches/$TRAIN" &&
+		update_step /bin/sh -c 'echo "$1" > "$2/train"' sh "$TRAIN" "$stage"; }
 	then
 		rm -rf "$stage" 2> /dev/null
 		mount_ro
@@ -425,10 +432,10 @@ do_update() {
 	done
 
 	if [ -d "$UNIT_DIR" ]; then
-		mv "$UNIT_DIR" "$UNIT_DIR.old" || { rm -rf "$stage"; mount_ro; die "could not replace $UNIT_DIR, nothing changed"; }
+		update_step mv "$UNIT_DIR" "$UNIT_DIR.old" || { rm -rf "$stage"; mount_ro; die "could not replace $UNIT_DIR, nothing changed"; }
 	fi
-	if ! mv "$stage" "$UNIT_DIR"; then
-		[ -d "$UNIT_DIR.old" ] && mv "$UNIT_DIR.old" "$UNIT_DIR"
+	if ! update_step mv "$stage" "$UNIT_DIR"; then
+		[ -d "$UNIT_DIR.old" ] && update_step mv "$UNIT_DIR.old" "$UNIT_DIR"
 		mount_ro
 		die "could not move the new version in place, kept $old"
 	fi
