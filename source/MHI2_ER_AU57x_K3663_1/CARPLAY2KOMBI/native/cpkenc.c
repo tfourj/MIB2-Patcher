@@ -29,6 +29,11 @@ extern int fclose(FILE *file);
 extern int usleep(u32 microseconds);
 extern int pthread_create(int *thread, const void *attributes, void *(*start)(void *), void *argument);
 extern int pthread_detach(int thread);
+struct timespec_qnx {
+	long tv_sec;
+	long tv_nsec;
+};
+extern int clock_gettime(int clock, struct timespec_qnx *now);
 
 /* cpkstream.c: live streaming to the cluster */
 extern __attribute__((visibility("hidden"))) int cpkstream_active(void);
@@ -70,6 +75,19 @@ extern __attribute__((visibility("hidden"))) void cpkstream_frame(const u8 *data
  * for this long, the last picture is encoded again (a tiny frame, nothing changed)
  */
 #define REPEAT_US 33000
+/* While this exists, every frame in, repeat and output is logged with its time in ms */
+#define DEBUG_TRIGGER "/ramdisk/cpk/debug"
+#define DEBUG_MAX_LINES 3000
+/* QNX CLOCK_MONOTONIC */
+#define CLOCK_MONOTONIC 2
+
+#define DEBUG(...) \
+	do { \
+		if (debugging && log_file && debug_lines < DEBUG_MAX_LINES) { \
+			debug_lines++; \
+			fprintf(log_file, __VA_ARGS__); \
+		} \
+	} while (0)
 
 #define LOG(...) \
 	do { \
@@ -138,6 +156,8 @@ static FILE *video_file;
 static FILE *log_file;
 /* Lines written to the log; it stops at LOG_MAX_LINES, so errors on every frame can't fill /ramdisk */
 static u32 log_lines;
+static u32 debug_lines;
+static int debugging;
 static u32 written_bytes;
 static u32 frames;
 /* Frames given to the encoder and frames that came out of it */
@@ -203,6 +223,15 @@ static int setup(const u32 *source)
 	return encoder != 0;
 }
 
+/* Milliseconds since some point, for the debug log */
+static u32 now_ms(void)
+{
+	struct timespec_qnx t;
+
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return (u32)t.tv_sec * 1000u + (u32)t.tv_nsec / 1000000u;
+}
+
 /*
  * Hands whatever the encoder has finished to the recording and/or the live stream.
  * Waits up to DRAIN_WAIT_US for the frame just fed: without the wait it only came out
@@ -241,6 +270,7 @@ static void drain(int recording, int streaming)
 		if (frames < 5)
 			LOG("frame %u: %u bytes\n", frames, bytes);
 		frames_out++;
+		DEBUG("O %u bytes %u fed %u out %u\n", now_ms(), bytes, frames_fed, frames_out);
 		bytes = 0;
 	}
 	/* A frame that gave no output: count again from here instead of waiting on every frame */
@@ -304,8 +334,10 @@ static void *repeater(void *argument)
 			continue;
 		}
 		lock();
-		if (frames_fed == seen)
+		if (frames_fed == seen) {
+			DEBUG("P %u\n", now_ms());
 			encode_and_send(0, 1);
+		}
 		seen = frames_fed;
 		unlock();
 	}
@@ -365,6 +397,8 @@ __attribute__((visibility("hidden"))) void cpkenc_frame(void *surface)
 	}
 	if (streaming)
 		start_repeater();
+	debugging = access(DEBUG_TRIGGER, 0) == 0;
+	DEBUG("R %u fed %u out %u\n", now_ms(), frames_fed, frames_out);
 	if (source[1] < SOURCE_WIDTH || source[2] < SOURCE_HEIGHT) {
 		src.x1 = (u16)source[1];
 		src.y1 = (u16)source[2];
