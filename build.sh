@@ -41,8 +41,12 @@ fi
 rm -rf "$BUILD"
 mkdir -p "$BUILD/stubs" "$BUILD/classes"
 
-# Stubs are only used to resolve firmware types and never go into the jar
-"$JAVAC" -nowarn -source 1.3 -target 1.2 -d "$BUILD/stubs" $(find "$SRC/stubs" -name '*.java')
+# Stubs are only used to resolve firmware types and never go into the jar.
+# A patch that only replaces a self-contained class (NAVIGNORE) has none
+STUBS=$(find "$SRC/stubs" -name '*.java' 2> /dev/null || true)
+if [ -n "$STUBS" ]; then
+    "$JAVAC" -nowarn -source 1.3 -target 1.2 -d "$BUILD/stubs" $STUBS
+fi
 "$JAVAC" -nowarn -source 1.3 -target 1.2 -cp "$BUILD/stubs" -d "$BUILD/classes" $(find "$SRC/src" -name '*.java')
 
 "$JAR" cf "$OUT/$PATCH.jar" -C "$BUILD/classes" .
