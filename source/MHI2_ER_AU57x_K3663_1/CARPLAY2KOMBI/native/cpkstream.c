@@ -75,6 +75,8 @@ static volatile u32 ring_tail;
 
 static u8 stage[STAGE_BLOCKS * BLOCK];
 static u8 keepalive[BLOCK];
+/* One frame plus its trailing access unit delimiter */
+static u8 frame[STAGE_BLOCKS * BLOCK];
 
 /* Continuity counters of the PIDs with payload, used by the render thread only */
 static u8 cc_pat, cc_pmt, cc_video;
@@ -242,15 +244,28 @@ static void read_delay(void)
 		pts_delay = (u32)value * 90u;
 }
 
-/* Packs one access unit into stage, padded to whole blocks. Returns blocks, 0 if too big */
+/*
+ * Packs one access unit into stage, padded to whole blocks. Returns blocks, 0 if too big.
+ * The cluster only showed a frame once the next one arrived: with an unbounded PES it can't
+ * tell the frame is complete, and an H.264 parser finds the end of a NAL by the next start
+ * code. So the PES gets its real length and the frame ends with an access unit delimiter
+ */
 static u32 pack_frame(const u8 *data, u32 len, u64 pcr)
 {
+	static const u8 aud[6] = { 0, 0, 0, 1, 0x09, 0xf0 };
 	u8 header[14];
-	u32 header_len;
+	u32 header_len, pes_len;
 	u64 pts = (pcr + pts_delay) & 0x1ffffffffull;
 	u32 used, chunk, first_len, packets_needed;
 
-	/* PES header, length 0 = unbounded, allowed for video */
+	if (len + sizeof(aud) > sizeof(frame))
+		return 0;
+	memcpy(frame, data, len);
+	memcpy(frame + len, aud, sizeof(aud));
+	data = frame;
+	len += sizeof(aud);
+
+	/* PES header; the length goes in once the header size is known */
 	header[0] = 0;
 	header[1] = 0;
 	header[2] = 1;
@@ -272,6 +287,12 @@ static u32 pack_frame(const u8 *data, u32 len, u64 pcr)
 		header[7] = 0;
 		header[8] = 0;
 		header_len = 9;
+	}
+	/* PES_packet_length counts the bytes after itself; 0 (unbounded) only if it doesn't fit */
+	pes_len = header_len - 6 + len;
+	if (pes_len <= 0xffff) {
+		header[4] = (u8)(pes_len >> 8);
+		header[5] = (u8)pes_len;
 	}
 
 	packets_needed = 3 + (len + header_len + 183) / 184;
