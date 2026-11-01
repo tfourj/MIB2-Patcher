@@ -10,7 +10,7 @@ Patches are sorted by firmware train, and the patcher only offers the ones built
 | JOKERBTN | The steering wheel joker (star) button skips tracks in CarPlay, and the joker, INFO and voice buttons can be set to other functions | ✅ Tested | [README](docs/JOKERBTN/README.md) |
 | TEL2ACP | The TEL key opens Apple CarPlay | ✅ Tested | [README](docs/TEL2ACP/README.md) |
 | MENUSCREEN | A MENU tile that opens a screen with Open GEM, Open REM and Restart CarPlay | ✅ Tested | [README](docs/MENUSCREEN/README.md) |
-| NAVIGNORE | The MMI navigation keeps running when a CarPlay route starts | 🧪 Not tested yet | [README](docs/NAVIGNORE/README.md) |
+| NAVIGNORE | The MMI navigation keeps running when a CarPlay route starts | ✅ Tested | [README](docs/NAVIGNORE/README.md) |
 
 | Train | Unit | Patches |
 |---|---|---|

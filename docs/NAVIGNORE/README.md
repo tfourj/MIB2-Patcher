@@ -8,7 +8,7 @@ Keeps the **MMI navigation** running on an Audi MHI2 when **Apple CarPlay** star
 | Phone call or Siri in CarPlay | The HMI knows CarPlay has the phone or speech | Also hidden from the HMI, like M.I.B.'s NavActiveIgnore (see [How it works](#how-it-works)) |
 
 > [!WARNING]
-> **Not tested yet**, built for an A6 C7 with `MHI2_ER_AU57x_K3663_1` by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
+> **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > If something is wrong, the MMI screen software may not start (black screen, no GEM).
 > A [boot guard](#safeguards) turns the patch off by itself after one failed start. SSH is still the best way to undo things. Use at your own risk.
 

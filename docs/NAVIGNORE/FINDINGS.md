@@ -43,5 +43,5 @@ NAVIGNORE only builds `AppState` from source. The Android Auto class depends on 
 
 ## Open questions
 
-- Not tested on the car yet: the cluster during a CarPlay route, and calls and Siri with every app state hidden.
+- Tested on the car: the MMI route keeps running when a CarPlay route starts. Calls and Siri with every app state hidden need a longer look.
 - A narrower variant could hide only the navigation state (2) and pass phone and speech through.
