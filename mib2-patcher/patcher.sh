@@ -359,6 +359,25 @@ update_step() {
 	return 1
 }
 
+# Writes to /mnt/app over qnet can fail from the RCC (GEM screens run there),
+# so a failed step is tried again on the MMX itself
+mmx_step() {
+	update_step "$@" || update_step on -f mmx "$@"
+}
+
+# Copies the patcher and the train's patches from the card ($1) to $stage.
+# With "mmx" as $2, every step runs on the MMX
+stage_copy() {
+	run_on=""
+	[ "$2" = mmx ] && run_on="on -f mmx"
+	update_step $run_on rm -rf "$stage" &&
+		update_step $run_on mkdir -p "$stage/patches" &&
+		update_step $run_on cp "$1/patcher.sh" "$stage/patcher.sh" &&
+		update_step $run_on cp -r "$1/esd" "$stage/esd" &&
+		update_step $run_on cp -r "$1/patches/$TRAIN" "$stage/patches/$TRAIN" &&
+		update_step $run_on /bin/sh -c 'echo "$1" > "$2/train"' sh "$TRAIN" "$stage"
+}
+
 # Copies the patcher and the train's patches from the card to the unit ($1 = 1
 # also when the card is not newer). Runs the new copy afterwards, so the GEM
 # screens and patches come from the new version
@@ -410,14 +429,9 @@ do_update() {
 
 	stage="$UNIT_DIR.new"
 	mount_rw
-	update_step rm -rf "$stage" "$UNIT_DIR.old" || { mount_ro; die "could not remove the leftovers of the last update, nothing changed"; }
-	if ! { update_step mkdir -p "$stage/patches" &&
-		update_step cp "$src/patcher.sh" "$stage/patcher.sh" &&
-		update_step cp -r "$src/esd" "$stage/esd" &&
-		update_step cp -r "$src/patches/$TRAIN" "$stage/patches/$TRAIN" &&
-		update_step /bin/sh -c 'echo "$1" > "$2/train"' sh "$TRAIN" "$stage"; }
-	then
-		rm -rf "$stage" 2> /dev/null
+	mmx_step rm -rf "$stage" "$UNIT_DIR.old" || { mount_ro; die "could not remove the leftovers of the last update, nothing changed"; }
+	if ! stage_copy "$src" && ! { log "copying again on the MMX"; stage_copy "$src" mmx; }; then
+		rm -rf "$stage" 2> /dev/null || on -f mmx rm -rf "$stage" 2> /dev/null
 		mount_ro
 		die "could not copy MIB2-Patcher to the unit, nothing changed"
 	fi
@@ -432,10 +446,10 @@ do_update() {
 	done
 
 	if [ -d "$UNIT_DIR" ]; then
-		update_step mv "$UNIT_DIR" "$UNIT_DIR.old" || { rm -rf "$stage"; mount_ro; die "could not replace $UNIT_DIR, nothing changed"; }
+		mmx_step mv "$UNIT_DIR" "$UNIT_DIR.old" || { mmx_step rm -rf "$stage"; mount_ro; die "could not replace $UNIT_DIR, nothing changed"; }
 	fi
-	if ! update_step mv "$stage" "$UNIT_DIR"; then
-		[ -d "$UNIT_DIR.old" ] && update_step mv "$UNIT_DIR.old" "$UNIT_DIR"
+	if ! mmx_step mv "$stage" "$UNIT_DIR"; then
+		[ -d "$UNIT_DIR.old" ] && mmx_step mv "$UNIT_DIR.old" "$UNIT_DIR"
 		mount_ro
 		die "could not move the new version in place, kept $old"
 	fi
