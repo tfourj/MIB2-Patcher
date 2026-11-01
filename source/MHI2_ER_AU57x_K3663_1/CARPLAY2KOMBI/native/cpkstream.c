@@ -63,6 +63,9 @@ extern void *memset(void *to, int value, u32 size);
 #define DELAY_FILE "/ramdisk/cpk/delay"
 #define KEEPALIVE_US 100000
 #define FILL_FILE "/ramdisk/cpk/fill"
+/* Repeats of the last picture after each CarPlay change (see read_repeat) */
+#define REPEAT_FILE "/ramdisk/cpk/repeat"
+#define REPEAT_DEFAULT 2
 #define TRIGGER_CHECK_US 50000
 
 #define CLOCK_REALTIME 0
@@ -87,6 +90,8 @@ static volatile u32 pts_delay = PTS_DELAY;
 static volatile int use_pts;
 /* Writer only: ticks without a frame before a filler block */
 static u32 fill_ticks = KEEPALIVE_US * 9 / 100;
+/* Set by the writer when streaming starts, read by the encoder's repeater */
+static volatile u32 repeat_limit = REPEAT_DEFAULT;
 static int clock_id = -1;
 static int writer_started;
 
@@ -253,6 +258,18 @@ static void read_fill(void)
 	fill_ticks = ms > 0 ? (u32)ms * 90u : KEEPALIVE_US * 9 / 100;
 }
 
+/*
+ * The repeat setting from REPEAT_FILE, read when streaming starts: how many times the
+ * last picture is sent again after a CarPlay change, to push it out of the cluster's
+ * decoder. A steady stream of repeats was too much for the cluster, so only a few
+ */
+static void read_repeat(void)
+{
+	int count = read_ms(REPEAT_FILE);
+
+	repeat_limit = count >= 0 ? (u32)count : REPEAT_DEFAULT;
+}
+
 /* Packs one access unit into stage, padded to whole blocks. Returns blocks, 0 if too big */
 static u32 pack_frame(const u8 *data, u32 len, u64 pcr)
 {
@@ -339,6 +356,7 @@ static void *writer(void *argument)
 			/* Drop anything left from before and start with a keyframe */
 			read_delay();
 			read_fill();
+			read_repeat();
 			ring_tail = ring_head;
 			need_keyframe = 1;
 			was_streaming = 1;
@@ -387,6 +405,12 @@ __attribute__((visibility("hidden"))) int cpkstream_active(void)
 			pthread_detach(thread);
 	}
 	return streaming;
+}
+
+/* How many repeats the encoder may send after each CarPlay frame */
+__attribute__((visibility("hidden"))) u32 cpkstream_repeat_limit(void)
+{
+	return repeat_limit;
 }
 
 /* True once when the next frame should be a keyframe (stream start or a dropped frame) */

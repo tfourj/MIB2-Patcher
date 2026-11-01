@@ -38,6 +38,7 @@ extern int clock_gettime(int clock, struct timespec_qnx *now);
 /* cpkstream.c: live streaming to the cluster */
 extern __attribute__((visibility("hidden"))) int cpkstream_active(void);
 extern __attribute__((visibility("hidden"))) int cpkstream_take_keyframe(void);
+extern __attribute__((visibility("hidden"))) u32 cpkstream_repeat_limit(void);
 extern __attribute__((visibility("hidden"))) void cpkstream_frame(const u8 *data, u32 len);
 
 #define NVMEDIA_LIBRARY "libnvmedia.so"
@@ -320,11 +321,13 @@ static void encode_and_send(int recording, int streaming)
 
 /*
  * While streaming, sends the last picture again when CarPlay has sent nothing for
- * REPEAT_US, so the cluster always gets the next frame that makes it show the last one
+ * REPEAT_US, at most cpkstream_repeat_limit() times after each CarPlay frame: the
+ * cluster shows a frame only when the next one arrives
  */
 static void *repeater(void *argument)
 {
 	u32 seen = frames_fed;
+	u32 repeats = 0;
 
 	(void)argument;
 	for (;;) {
@@ -334,9 +337,13 @@ static void *repeater(void *argument)
 			continue;
 		}
 		lock();
-		if (frames_fed == seen) {
+		if (frames_fed != seen) {
+			/* A CarPlay frame came in: count the repeats after it again */
+			repeats = 0;
+		} else if (repeats < cpkstream_repeat_limit()) {
 			DEBUG("P %u\n", now_ms());
 			encode_and_send(0, 1);
+			repeats++;
 		}
 		seen = frames_fed;
 		unlock();
