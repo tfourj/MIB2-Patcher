@@ -10,7 +10,7 @@ It isn't installed by MIB2-Patcher. See [Diagnostic](#diagnostic) for how to run
 
 ## TL;DR
 
-**Possible with Java only. Two of the three parts work in the car, the cursor drawing is untested.** The iPhone is told the car has a knob and a touchpad, but the HMI never sends it the touchpad positions.
+**Possible with Java only, and working in the car as a diagnostic (Test 4).** The iPhone is told the car has a knob and a touchpad, but the HMI never sends it the touchpad positions.
 The CarPlay stack on the unit can also register a touchscreen, and the HMI can send each tap as a touch (Test 3). In keypanel mode 6 the touchpad reports finger moves (Test 2).
 CarPlay has no pointer of its own, so the car must draw the cursor.
 
@@ -63,7 +63,7 @@ Open questions, which the diagnostic answers:
 
 1. Which touchpad events reach the HMI while CarPlay is on screen, and does a swipe also send keys? See [Test 1](#test-1-what-the-touchpad-sends-in-carplay).
 2. Does the iPhone accept touches once `inputFeatures` is 13? Very likely, see [Test 3](#test-3-touches-to-the-iphone).
-3. Does an HMI bitmap show above the CarPlay video? TOUCHDIAG 0.3.0 tests it with a cursor.
+3. Does an HMI bitmap show above the CarPlay video? Yes, see [Test 4](#test-4-cursor).
 4. Does another keypanel mode (map panning, 6) send finger moves on the CarPlay screen? Yes, see [Test 2](#test-2-map-panning-mode-on-the-carplay-screen).
 
 ## Test 1: what the touchpad sends in CarPlay
@@ -102,6 +102,15 @@ Logged with TOUCHDIAG 0.2.0, `/ramdisk/touchdiag.inject` and mode 6, after resta
 - Apps opened where the pad was pressed (seen by the user, not yet checked icon by icon). With the flag set, the HMI got no touchpad events, and a stock tap never sends `button 1`, so the touches are what opened them.
 - CarPlay kept working with the touchscreen added. Presses near the left edge still moved the focus too (joystick, button 5).
 
+## Test 4: cursor
+
+TOUCHDIAG 0.3.0 with `/ramdisk/touchdiag.cursor`, after restarting only CarPlay (`inputFeatures=13`):
+
+- The first press switched the keypanel to mode 6 and showed the cursor (`D cursor created`, `D cursor shown attached=true`). It is drawn above the CarPlay video.
+- The cursor followed the finger, and a tap opened the app under it. The user: "works great".
+- Both axes ran the wrong way round: the `MOVED_REL` steps count opposite to the screen. 0.4.0 flips them.
+- The cursor stayed on screen when the pad wasn't used. 0.4.0 hides it after 5 seconds without touchpad use, with an HMI `Timer` through `TimerSyncer`, so the timeout also runs on the HMI thread.
+
 ## Diagnostic
 
 TOUCHDIAG replaces two firmware classes, with all their original members:
@@ -127,9 +136,9 @@ From 0.3.0 it switches again only when the mode changes or after touchpad encode
 While `/ramdisk/touchdiag.cursor` exists (0.3.0), the CarPlay screen gets a cursor, an 18 x 18 white square with a black border:
 
 - It is drawn like the firmware's `WidgetFinderDiag` markers: a screen-sized `Composite` in front of everything in `HWGManager.getRootComposite()`, holding one texture from `HWGManager.getTexture`, painted with `Graphics2D`. Moves call `IRootWindow.repaint()`, the HMI's own paint call, on the HMI thread.
-- The keypanel goes to map panning (6) unless the mode file says otherwise. `TOUCH_PAD_MOVED_REL` steps move the cursor (2.5 pixels per step), and `TOUCH_PAD_TAPPED` sends a touch where the cursor is.
+- The keypanel goes to map panning (6) unless the mode file says otherwise. `TOUCH_PAD_MOVED_REL` steps move the cursor (2.5 pixels per step, both axes flipped from 0.4.0), and `TOUCH_PAD_TAPPED` sends a touch where the cursor is.
 - Touchpad keys and a joystick event within 150 ms of a press are swallowed, so the focus doesn't move.
-- On any other screen the cursor is hidden and the touchpad works as stock.
+- On any other screen the cursor is hidden and the touchpad works as stock. From 0.4.0 it also hides after 5 seconds without touchpad use, and the next press shows it again where it was.
 - The touchscreen bit is added as with the inject flag.
 
 While `/ramdisk/touchdiag.inject` exists, the touchpad is not passed to the HMI.
