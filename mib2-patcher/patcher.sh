@@ -373,9 +373,22 @@ stage_copy() {
 	update_step $run_on rm -rf "$stage" &&
 		update_step $run_on mkdir -p "$stage/patches" &&
 		update_step $run_on cp "$1/patcher.sh" "$stage/patcher.sh" &&
-		update_step $run_on cp -r "$1/esd" "$stage/esd" &&
-		update_step $run_on cp -r "$1/patches/$TRAIN" "$stage/patches/$TRAIN" &&
+		copy_tree "$1/esd" "$stage/esd" &&
+		copy_tree "$1/patches/$TRAIN" "$stage/patches/$TRAIN" &&
 		update_step $run_on /bin/sh -c 'echo "$1" > "$2/train"' sh "$TRAIN" "$stage"
+}
+
+# Copies folder $1 to $2 file by file, on $run_on. The glob skips hidden files, like
+# the ._ files macOS writes next to every file on a FAT card, which cp -r can't read
+copy_tree() {
+	update_step $run_on mkdir -p "$2" || return 1
+	for f in "$1"/*; do
+		if [ -d "$f" ]; then
+			copy_tree "$f" "$2/${f##*/}" || return 1
+		elif [ -f "$f" ]; then
+			update_step $run_on cp "$f" "$2/${f##*/}" || return 1
+		fi
+	done
 }
 
 # Copies the patcher and the train's patches from the card to the unit ($1 = 1
