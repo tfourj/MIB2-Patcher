@@ -62,6 +62,7 @@ extern void *memset(void *to, int value, u32 size);
 #define PTS_DELAY 5400
 #define DELAY_FILE "/ramdisk/cpk/delay"
 #define KEEPALIVE_US 100000
+#define FILL_FILE "/ramdisk/cpk/fill"
 #define TRIGGER_CHECK_US 50000
 
 #define CLOCK_REALTIME 0
@@ -84,6 +85,8 @@ static volatile int need_keyframe;
 /* Set by the writer when streaming starts, read by the render thread */
 static volatile u32 pts_delay = PTS_DELAY;
 static volatile int use_pts;
+/* Writer only: ticks without a frame before a filler block */
+static u32 fill_ticks = KEEPALIVE_US * 9 / 100;
 static int clock_id = -1;
 static int writer_started;
 
@@ -209,37 +212,45 @@ static u32 pad_block(u8 *out, u32 used)
 	return used;
 }
 
+/* A non-negative number of ms (at most 1000) from a settings file, or -1 */
+static int read_ms(const char *path)
+{
+	char text[16];
+	int fd = open(path, 0);
+	int n, i, value = 0;
+
+	if (fd < 0)
+		return -1;
+	n = read(fd, text, sizeof(text) - 1);
+	close(fd);
+	for (i = 0; i < n && text[i] >= '0' && text[i] <= '9'; i++)
+		value = value * 10 + (text[i] - '0');
+	return i > 0 && value <= 1000 ? value : -1;
+}
+
 /*
  * The delay setting from DELAY_FILE, read when streaming starts. By default (no file,
- * or a negative number) frames have no PTS and the cluster shows each one once decoded.
+ * or not a number) frames have no PTS and the cluster shows each one once decoded.
  * A number of milliseconds gives every frame a PTS that far ahead of the PCR
  */
 static void read_delay(void)
 {
-	char text[16];
-	int fd = open(DELAY_FILE, 0);
-	int n, i, value = 0, negative = 0;
+	int ms = read_ms(DELAY_FILE);
 
-	pts_delay = PTS_DELAY;
-	use_pts = 0;
-	if (fd < 0)
-		return;
-	n = read(fd, text, sizeof(text) - 1);
-	close(fd);
-	if (n <= 0)
-		return;
-	for (i = 0; i < n; i++) {
-		if (text[i] == '-' && i == 0)
-			negative = 1;
-		else if (text[i] >= '0' && text[i] <= '9')
-			value = value * 10 + (text[i] - '0');
-		else
-			break;
-	}
-	if (!negative && i > 0 && value <= 1000) {
-		use_pts = 1;
-		pts_delay = (u32)value * 90u;
-	}
+	use_pts = ms >= 0;
+	pts_delay = ms >= 0 ? (u32)ms * 90u : PTS_DELAY;
+}
+
+/*
+ * The filler setting from FILL_FILE, read when streaming starts: with no frame to send
+ * for this many ms the writer sends a PCR and null packets. More filler means more data
+ * on the channel; the cluster seems to wait for a fixed amount of data before decoding
+ */
+static void read_fill(void)
+{
+	int ms = read_ms(FILL_FILE);
+
+	fill_ticks = ms > 0 ? (u32)ms * 90u : KEEPALIVE_US * 9 / 100;
 }
 
 /* Packs one access unit into stage, padded to whole blocks. Returns blocks, 0 if too big */
@@ -327,6 +338,7 @@ static void *writer(void *argument)
 		if (!was_streaming) {
 			/* Drop anything left from before and start with a keyframe */
 			read_delay();
+			read_fill();
 			ring_tail = ring_head;
 			need_keyframe = 1;
 			was_streaming = 1;
@@ -346,7 +358,7 @@ static void *writer(void *argument)
 			last_write = now_90k();
 			continue;
 		}
-		if (now_90k() - last_write > KEEPALIVE_US * 9 / 100) {
+		if (now_90k() - last_write > fill_ticks) {
 			/* Only a PCR: it doesn't step a continuity counter, so it can't clash with the frames */
 			u64 pcr = now_90k();
 			u8 no_cc = 0;
