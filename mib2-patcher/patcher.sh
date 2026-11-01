@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# MIB2-Patcher v1.2.1 - one GEM entry for every patch that fits the unit's firmware
+# MIB2-Patcher v1.2.2 - one GEM entry for every patch that fits the unit's firmware
 # Patches live in patches/<train>/<PATCH>, each with its own installer and GEM screens.
 # "update" copies the patcher and the patches of the unit's train from the SD card
 # to /mnt/app/eso/mib2-patcher, so the GEM screens work without the card afterwards
@@ -28,7 +28,7 @@
 # from the MIB2_Patcher GEM screen. Run from the card, every action except
 # update and update-force is passed on to the copy on the unit.
 
-VERSION="1.2.1"
+VERSION="1.2.2"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
