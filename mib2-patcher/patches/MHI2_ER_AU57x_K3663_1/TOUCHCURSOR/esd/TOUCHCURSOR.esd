@@ -1,0 +1,22 @@
+#---------------------------------------------------------------------
+# TOUCHCURSOR - the MMI touchpad moves a cursor in Apple CarPlay
+# Linked into /eso/hmi/engdefs by "touchcursor.sh gem-on"
+# Runs from the copy on the unit (/mnt/app/eso/mib2-patcher), no SD card needed
+#---------------------------------------------------------------------
+screen   TOUCHCURSOR MIB2_Patcher
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TOUCHCURSOR/esd/status.sh"
+   label    "Status"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TOUCHCURSOR/esd/install.sh"
+   label    "Install TOUCHCURSOR"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TOUCHCURSOR/esd/uninstall.sh"
+   label    "Uninstall TOUCHCURSOR"
+
+script
+   value    sys 1 0x0100 "/net/mmx/mnt/app/eso/mib2-patcher/patches/MHI2_ER_AU57x_K3663_1/TOUCHCURSOR/esd/restore.sh"
+   label    "Restore original lsd.sh"
