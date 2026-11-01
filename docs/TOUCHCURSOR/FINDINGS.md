@@ -156,7 +156,7 @@ Test:
 2. `echo 6 > /ramdisk/touchdiag.mode`, touch the pad once on the CarPlay screen, then drag slowly. The log shows whether `MOVED` events (10911, 10912) come now.
 3. `touch /ramdisk/touchdiag.inject`, restart CarPlay (MENUSCREEN or reconnect the phone), check that the log shows `inputFeatures=13`, then tap and drag on the touchpad.
 4. Cursor (0.3.0): `touch /ramdisk/touchdiag.cursor` (without the inject flag), restart CarPlay, then drag on the pad to move the cursor and tap to touch.
-5. `rm /ramdisk/touchdiag.*` flags to get the stock touchpad back. A reboot clears them too.
+5. `rm /ramdisk/touchdiag.inject /ramdisk/touchdiag.mode /ramdisk/touchdiag.cursor` to get the stock touchpad back. A reboot clears them too.
 
 Remove it with `sh /mnt/persist/touchdiag/touchdiag.sh uninstall`, reboot the MMI, then delete `/mnt/persist/touchdiag`.
 MIB2-Patcher's Uninstall everything doesn't remove it.
