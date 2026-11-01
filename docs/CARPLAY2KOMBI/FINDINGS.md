@@ -3,6 +3,20 @@
 Unit: `MU1425` / `MHI2_ER_AU57x_K3663_1` (Audi A6 C7, MHI2), cluster with the MMI navigation map
 Sources analysed: `/ifs/lsd.jxe` from the unit, `displaymanager`, `dio_manager` and `libairplay.so`, and live tests over SSH
 
+## Status
+
+**Experimental, not part of the patches.** The native hook in [`source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native/`](../../source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native) shows live CarPlay in the cluster.
+It still lags behind the main screen when CarPlay changes little (a menu move is only a few frames), and navigation switches the cluster back to its own view when a route starts.
+It isn't installed by MIB2-Patcher, and is not on the test unit any more.
+
+To try it by hand over SSH (see [Passthrough: progress](#passthrough-progress)):
+1. Copy `libcpkhook.so` and `cpk-cluster.sh` to `/mnt/app/cpk/`.
+2. Back up `/mnt/system/etc/eso/production/smartphone_integrator.json` and add `"LD_PRELOAD=/mnt/app/cpk/libcpkhook.so"` to `dio_manager`'s `envs`, then reboot the MMI.
+3. `sh /mnt/app/cpk/cpk-cluster.sh on [delay [fill [repeats]]]`, and `off` to get the map back.
+
+To remove it: `cpk-cluster.sh off`, put the backed-up `smartphone_integrator.json` back, delete `/mnt/app/cpk` and `/ramdisk/cpk`, then reboot the MMI.
+Rebooting matters: until then `smartphone_integrator` still starts CarPlay with the old `LD_PRELOAD`.
+
 ## TL;DR
 
 **Not possible with a Java patch.** The cluster map is H.264 video that the MMX encodes and sends over MOST.

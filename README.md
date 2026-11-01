@@ -148,8 +148,8 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
 | `mib2-patcher/patches/<train>/` | `lsd.jxe.sha1` of the train, and one folder per patch with its jar, installer and GEM screens |
 | `source/<train>/<patch>/` | Java source of the patch (`src/`) and compile-only firmware stubs (`stubs/`) |
 | `docs/<patch>/` | README and firmware findings of each patch |
-| `docs/CARPLAY2KOMBI/` | Findings on showing CarPlay in the cluster (not possible as a Java patch) |
-| `source/<train>/CARPLAY2KOMBI/native/` | C hook preloaded into the CarPlay process, work in progress (see its findings) |
+| `docs/CARPLAY2KOMBI/` | Findings on showing CarPlay in the cluster (experimental, not one of the patches) |
+| `source/<train>/CARPLAY2KOMBI/native/` | Experimental C hook that streams CarPlay to the cluster, installed by hand (see its findings) |
 | `tools/jxe/` | Python tools for reading the firmware, see [docs/TOOLS.md](docs/TOOLS.md) |
 | `build.sh` | Builds a patch jar |
 | `package.sh` | Packages the SD card zip |
