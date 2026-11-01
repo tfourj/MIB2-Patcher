@@ -70,10 +70,41 @@ The encoder reads buffers the MMX renders itself, like the nav map, but not fram
 
 ## Other routes
 
-- **Pass CarPlay's H.264 through.** Hook the video in `dio_manager` / `libairplay`, mux it to MPEG-TS and write it to `/dev/mlb/isoTX2` instead of the map.
+- **Pass CarPlay's H.264 through** (work in progress, see [Passthrough: progress](#passthrough-progress)). Hook the video in `dio_manager` / `libairplay`, mux it to MPEG-TS and write it to `/dev/mlb/isoTX2` instead of the map.
   M.I.B.'s `carplay_maps_vc` mod has a native `altscreen-most-bridge` for Virtual Cockpit units (MU1102, MU1367, MU1440, MU1447) and patches `dio_manager` per firmware.
   On this unit the iPhone sends one keyframe per session, the stream is the whole 800×480 screen, and a mistake can crash CarPlay or the screens.
 - **Copy the decoded frames** into a normal buffer before encoding. That needs NVIDIA driver internals with no documentation.
+
+## Passthrough: progress
+
+Work on the first route. The hook is in [`source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native/`](../../source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native), built with `build.sh` (Homebrew `llvm` + `lld` and the unit's `/proc/boot/libc.so.3`, no QNX SDK).
+
+**Hook point.** `libairplay.so` imports `NvSSVideoDecode(handle, buffer, arg)` from `libnvss_video.so`, so a preloaded library can see every buffer.
+`buffer` is `{data, len, pts (u64), flag (u8)}`, from the `memcpy(dst, [r1], [r1 + 4])` in `NvSSVideoDecode`.
+`RTLD_NEXT` (`-3` in `libc.so.3`) finds nothing from a preloaded library, so the hook gets the real functions with `dlopen("libnvss_video.so", 0x100)`, the mode the firmware's `mm-ipod` uses.
+
+**Loading it.** `smartphone_integrator` starts `dio_manager` for each CarPlay session with the `envs` in `/etc/eso/production/smartphone_integrator.json` (the same file as `/mnt/system/etc/...`).
+The firmware already uses `LD_PRELOAD` there for another process. One added entry, `LD_PRELOAD=/mnt/app/cpk/libcpkhook.so`, loads the hook. `smartphone_integrator` reads the file only when it starts, so it needs an MMI reboot.
+The original is kept as `/mnt/persist/cpk/smartphone_integrator.json.orig`. To undo:
+
+```sh
+mount -uw /mnt/system && cp /mnt/persist/cpk/smartphone_integrator.json.orig /mnt/system/etc/eso/production/smartphone_integrator.json; mount -ur /mnt/system
+```
+
+**What the iPhone sends** (recorded with `mkdir /ramdisk/cpk/dump` for a few seconds, then `rm -r` it):
+
+| Item | Value |
+|---|---|
+| Format | Annex-B H.264, one NAL per buffer |
+| SPS | High profile, level 3.1, 780×468, 4 reference frames (NAL header `0x27`) |
+| Frames | P slices of about 1.5 KB, more frames when the picture moves |
+| Keyframes | SPS, PPS and IDR only at the start of a session |
+
+`AirPlayReceiverSessionForceKeyFrame(session, completion, context)` asks the iPhone for a new keyframe.
+The hook keeps the session from `AirPlayReceiverSessionSetDelegate(session, delegate)`, which `dio_manager` calls at the start of a session, and drops it in `AirPlayReceiverSessionTearDown`.
+Asking for a keyframe returned 0, and the next buffers held SPS, PPS and an 8.7 KB IDR. So the stream can be started for the cluster at any time.
+
+**Not known yet:** the format the cluster decodes. `displaymanager` doesn't log its encoder settings, so the profile and resolution of the map stream, and whether the cluster accepts High profile at 780×468, are still open.
 
 ## How to repeat the checks
 
@@ -87,5 +118,7 @@ Over SSH on the MMX (see the README for setting up SSH):
 
 ## Open questions
 
+- The cluster stream's profile, level and resolution, and whether the cluster decodes CarPlay's High profile 780×468.
+- How to send our own MPEG-TS on `/dev/mlb/isoTX2` while `displaymanager` keeps the MOST connection to the cluster open.
 - Whether the cluster would show a stream that is not map-like, or needs a particular foreground picture type (`setFGLayer`, never called by the HMI).
 - `getDisplayableInfo(59, 4)` exists in the DSI but has no caller; its answer wasn't checked.
