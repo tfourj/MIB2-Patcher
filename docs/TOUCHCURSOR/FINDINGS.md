@@ -10,8 +10,8 @@ It isn't installed by MIB2-Patcher. See [Diagnostic](#diagnostic) for how to run
 
 ## TL;DR
 
-**Possible with Java only, not tested yet.** The iPhone is told the car has a knob and a touchpad, but the HMI never sends it the touchpad positions.
-The CarPlay stack on the unit can also register a touchscreen, and the HMI could send each tap as a touch at a cursor drawn by the HMI.
+**Possible with Java only. Two of the three parts work in the car, the cursor drawing is untested.** The iPhone is told the car has a knob and a touchpad, but the HMI never sends it the touchpad positions.
+The CarPlay stack on the unit can also register a touchscreen, and the HMI can send each tap as a touch (Test 3). In keypanel mode 6 the touchpad reports finger moves (Test 2).
 CarPlay has no pointer of its own, so the car must draw the cursor.
 
 - `startService` sends `inputFeatures` 9 (knob 1 + touchpad 8). The touchscreen bits (2 low, 4 high fidelity) are off because `TerminalModeConfigurationImpl.hasTouchscreen()` is false.
@@ -62,7 +62,7 @@ VW's MIB2 High touchscreen units use the same stack, so the touchscreen path is 
 Open questions, which the diagnostic answers:
 
 1. Which touchpad events reach the HMI while CarPlay is on screen, and does a swipe also send keys? See [Test 1](#test-1-what-the-touchpad-sends-in-carplay).
-2. Does the iPhone accept touches once `inputFeatures` is 13?
+2. Does the iPhone accept touches once `inputFeatures` is 13? Very likely, see [Test 3](#test-3-touches-to-the-iphone).
 3. Does an HMI bitmap show above the CarPlay video? (Not covered by the diagnostic yet.)
 4. Does another keypanel mode (map panning, 6) send finger moves on the CarPlay screen? Yes, see [Test 2](#test-2-map-panning-mode-on-the-carplay-screen).
 
@@ -92,6 +92,15 @@ Logged with TOUCHDIAG 0.2.0 and `/ramdisk/touchdiag.mode` = 6. `KbdService.setRe
 - Three of the five drags sent no moves. Each of them started near an edge, and the diagnostic re-applied the mode on each press, so it is unclear whether the edge zones or the re-apply cut them off.
 
 So in mode 6 a cursor can follow the finger. A patch must also drop the joystick event that comes with a touchpad press (a JoystickEvent right after `TOUCH_PAD_PRESSED`), so the focus doesn't jump.
+
+## Test 3: touches to the iPhone
+
+Logged with TOUCHDIAG 0.2.0, `/ramdisk/touchdiag.inject` and mode 6, after restarting only CarPlay (an MMI reboot clears `/ramdisk`).
+
+- `startService` sent `inputFeatures=13`, and `dio_manager` registered `Eso_TouchScreen` next to `Eso_Knob` and `Eso_TrackPad` (`sloginfo`).
+- Each pad press went out as a touchscreen press and release at the press position mapped onto 780 x 468. There were no "Touch event ... not forwarded" warnings in `sloginfo`.
+- Apps opened where the pad was pressed (seen by the user, not yet checked icon by icon). With the flag set, the HMI got no touchpad events, and a stock tap never sends `button 1`, so the touches are what opened them.
+- CarPlay kept working with the touchscreen added. Presses near the left edge still moved the focus too (joystick, button 5).
 
 ## Diagnostic
 
