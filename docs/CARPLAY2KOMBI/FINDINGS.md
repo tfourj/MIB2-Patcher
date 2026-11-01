@@ -144,7 +144,9 @@ The map window sits between the two round dials. The whole CarPlay screen scaled
 
 **Context 76 on the cluster.** `dmdt sc 4 76` ([16 HMI, 59 CarPlay]) makes `displaymanager`'s own encoder run without the `nvmap` errors of context 77.
 With only a stream displayable it seems to hand the decoder's buffer straight to the encoder ("Optimized case 1: non stream displayable not found in actual context!" in the binary); with a drawn layer it composites first.
-The cluster didn't show CarPlay, though.
+The cluster showed a green, glitchy picture, not CarPlay: the composite doesn't contain the decoded CarPlay frame properly.
+Contexts [33, 59] and [59, 33] (CarPlay with the cluster map layer) fail like 77, with the `nvmap` error.
+So `displaymanager` can't encode CarPlay for the cluster; it needs an encoder of our own.
 
 ## How to repeat the checks
 
