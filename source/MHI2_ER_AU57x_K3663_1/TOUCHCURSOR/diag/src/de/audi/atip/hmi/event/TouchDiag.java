@@ -279,7 +279,8 @@ public final class TouchDiag {
     /** Cursor pixels for one MOVED_REL value, a signed byte (255 is -1). */
     private static int step(int value) {
         int signed = value > 127 ? value - 256 : value;
-        return signed * CURSOR_GAIN_TIMES / CURSOR_GAIN_DIVIDE;
+        // The pad counts the other way round than the screen on both axes
+        return -signed * CURSOR_GAIN_TIMES / CURSOR_GAIN_DIVIDE;
     }
 
     private static int clamp(int value, int size) {
