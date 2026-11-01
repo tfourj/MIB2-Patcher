@@ -31,7 +31,15 @@ import de.audi.tghu.fwhmi.AbstractWindow;
  * only come as touchpad encoder and zone keys. While /ramdisk/touchdiag.mode
  * holds a KbdService recognizer mode (e.g. 6, map panning), a touchpad press
  * on the CarPlay screen switches the keypanel to it, the way the map screen
- * does, to see which events that mode sends.
+ * does. It is switched again after touchpad encoder keys show up, since only
+ * the terminal mode app's own modes send those.
+ *
+ * While /ramdisk/touchdiag.cursor exists, the CarPlay screen gets a cursor
+ * (TouchCursor) instead: the keypanel goes to map panning (6) unless the mode
+ * file says otherwise, finger moves (TOUCH_PAD_MOVED_REL) move the cursor and
+ * a tap is sent to the iPhone as a touch where the cursor is. The touchpad
+ * keys and the joystick event that comes with a press are swallowed, so the
+ * focus doesn't move too.
  */
 public final class TouchDiag {
 
@@ -43,12 +51,19 @@ public final class TouchDiag {
     private static final String LOG_FILE = "/ramdisk/touchdiag.log";
     private static final String INJECT_FLAG = "/ramdisk/touchdiag.inject";
     private static final String MODE_FILE = "/ramdisk/touchdiag.mode";
+    private static final String CURSOR_FLAG = "/ramdisk/touchdiag.cursor";
     private static final long MAX_LOG_SIZE = 1024 * 1024;
     private static final long FLAG_CHECK_MS = 1000;
     private static final long LOG_RETRY_MS = 10000;
-    // Re-applies the mode after the terminal mode app may have set its own
-    private static final long MODE_REAPPLY_MS = 2000;
     private static final int MAX_MODE_FILE_SIZE = 16;
+
+    // KbdService.RECOGNIZERMODE_MAP_PANNING, which sends finger moves
+    private static final int MODE_MAP_PANNING = 6;
+    // Cursor pixels per touchpad step, as a fraction
+    private static final int CURSOR_GAIN_TIMES = 5;
+    private static final int CURSOR_GAIN_DIVIDE = 2;
+    // The joystick event of a press near the pad edge comes about 20 ms after the press
+    private static final long JOYSTICK_AFTER_PRESS_MS = 150;
 
     // Screen ID of the CarPlay screen (seen in the first log)
     private static final int CARPLAY_SCREEN = 240000;
@@ -63,6 +78,7 @@ public final class TouchDiag {
     private static final int TOUCH_PAD_APPROACHED = 10909;
     private static final int TOUCH_PAD_ABANDONED = 10910;
     private static final int TOUCH_PAD_MOVED_ABS = 10911;
+    private static final int TOUCH_PAD_MOVED_REL = 10912;
 
     // de.audi.atip.hmi.event.KeyEvent key source and touchpad encoder keys
     private static final int KBD_TOUCHPAD = 9;
@@ -77,10 +93,14 @@ public final class TouchDiag {
     private static volatile Sink sink = null;
     private static volatile int windowWidth = 780;
     private static volatile int windowHeight = 468;
+    private static volatile int windowX = 20;
+    private static volatile int windowY = 5;
     private static volatile int padWidth = 0;
     private static volatile int padHeight = 0;
     private static volatile boolean inject = false;
     private static volatile long flagChecked = 0;
+    private static volatile boolean cursor = false;
+    private static volatile long cursorChecked = 0;
 
     // Only used on the HMI thread
     private static int maxX = 0;
@@ -91,7 +111,11 @@ public final class TouchDiag {
     private static long lastRelease = 0;
     private static int mode = 0;
     private static long modeChecked = 0;
-    private static long modeApplied = 0;
+    private static int modeApplied = 0;
+    private static boolean modeLost = false;
+    private static int cursorX = 390;
+    private static int cursorY = 234;
+    private static long lastPress = 0;
 
     private TouchDiag() {
     }
@@ -123,6 +147,12 @@ public final class TouchDiag {
         }
     }
 
+    /** Where the CarPlay window sits on the screen, from startService. */
+    public static void setOffset(int x, int y) {
+        windowX = x;
+        windowY = y;
+    }
+
     /** The touchpad resolution from startService. */
     public static void setPad(int width, int height) {
         padWidth = width;
@@ -137,6 +167,16 @@ public final class TouchDiag {
             inject = new File(INJECT_FLAG).exists();
         }
         return inject;
+    }
+
+    /** True while the cursor flag file exists, checked at most once a second. */
+    public static boolean isCursorOn() {
+        long now = System.currentTimeMillis();
+        if (now - cursorChecked >= FLAG_CHECK_MS || now < cursorChecked) {
+            cursorChecked = now;
+            cursor = new File(CURSOR_FLAG).exists();
+        }
+        return cursor;
     }
 
     private static boolean onTouch(TouchEvent event) {
@@ -157,7 +197,14 @@ public final class TouchDiag {
         line.append(" scr=").append(screen);
         log(line.toString());
 
-        if (id == TOUCH_PAD_PRESSED && screen.equals(String.valueOf(CARPLAY_SCREEN))) {
+        boolean onCarPlay = screen.equals(String.valueOf(CARPLAY_SCREEN));
+        if (isCursorOn()) {
+            return onCursorTouch(event, id, x, y, onCarPlay);
+        }
+        if (TouchCursor.isShown()) {
+            TouchCursor.hide(event.getReceiver());
+        }
+        if (id == TOUCH_PAD_PRESSED && onCarPlay) {
             applyMode(event);
         }
 
@@ -200,6 +247,48 @@ public final class TouchDiag {
         return true;
     }
 
+    /** Cursor mode: moves the cursor and sends taps. True means swallowed. */
+    private static boolean onCursorTouch(TouchEvent event, int id, int x, int y, boolean onCarPlay) {
+        ATIPEventListener receiver = event.getReceiver();
+        if (!onCarPlay) {
+            TouchCursor.hide(receiver);
+            return false;
+        }
+        if (id == TOUCH_PAD_CHARS_RECOGNIZED || id == TOUCH_PAD_APPROACHED || id == TOUCH_PAD_ABANDONED) {
+            return false;
+        }
+        if (id == TOUCH_PAD_PRESSED) {
+            lastPress = System.currentTimeMillis();
+            applyMode(event);
+            showCursor(receiver);
+        } else if (id == TOUCH_PAD_MOVED_REL) {
+            cursorX = clamp(cursorX + step(x), windowWidth);
+            cursorY = clamp(cursorY + step(y), windowHeight);
+            showCursor(receiver);
+        } else if (id == TOUCH_PAD_TAPPED) {
+            send(1, cursorX, cursorY);
+            send(0, cursorX, cursorY);
+        }
+        return true;
+    }
+
+    private static void showCursor(ATIPEventListener receiver) {
+        TouchCursor.show(receiver, windowX + cursorX, windowY + cursorY);
+    }
+
+    /** Cursor pixels for one MOVED_REL value, a signed byte (255 is -1). */
+    private static int step(int value) {
+        int signed = value > 127 ? value - 256 : value;
+        return signed * CURSOR_GAIN_TIMES / CURSOR_GAIN_DIVIDE;
+    }
+
+    private static int clamp(int value, int size) {
+        if (value < 0) {
+            return 0;
+        }
+        return value >= size ? size - 1 : value;
+    }
+
     private static boolean onKey(KeyEvent event) {
         int code = event.getKeyCode();
         int source = event.getKeySource();
@@ -212,28 +301,54 @@ public final class TouchDiag {
             WheelButtonEvent wheel = (WheelButtonEvent) event;
             line.append(" dir=").append(wheel.getDirection()).append(" clicks=").append(wheel.getClickCount());
         }
-        line.append(" scr=").append(screenOf(event));
+        String screen = screenOf(event);
+        line.append(" scr=").append(screen);
         log(line.toString());
 
-        boolean fromTouchpad = source == KBD_TOUCHPAD || code == KEY_TP_ENCODER_X || code == KEY_TP_ENCODER_Y;
+        boolean onCarPlay = screen.equals(String.valueOf(CARPLAY_SCREEN));
+        boolean encoder = code == KEY_TP_ENCODER_X || code == KEY_TP_ENCODER_Y;
+        if (encoder && onCarPlay) {
+            // Only the terminal mode app's modes send these: switch again on the next press
+            modeLost = true;
+        }
+        boolean fromTouchpad = source == KBD_TOUCHPAD || encoder;
+        if (isCursorOn()) {
+            if (!onCarPlay) {
+                TouchCursor.hide(event.getReceiver());
+                return false;
+            }
+            long sincePress = System.currentTimeMillis() - lastPress;
+            boolean pressJoystick = event instanceof JoystickEvent && sincePress >= 0
+                    && sincePress < JOYSTICK_AFTER_PRESS_MS;
+            return fromTouchpad || pressJoystick;
+        }
+        if (TouchCursor.isShown()) {
+            TouchCursor.hide(event.getReceiver());
+        }
         return fromTouchpad && isInjectOn();
     }
 
-    /** Switches the keypanel to the mode in MODE_FILE, at most every MODE_REAPPLY_MS. */
+    /**
+     * Switches the keypanel to the mode in MODE_FILE (map panning in cursor
+     * mode) when it changed, or when encoder keys showed the terminal mode app
+     * set its own mode again.
+     */
     private static void applyMode(ATIPEvent event) {
         long now = System.currentTimeMillis();
         if (now - modeChecked >= FLAG_CHECK_MS || now < modeChecked) {
             modeChecked = now;
             mode = readMode();
         }
-        if (mode <= 0 || (now - modeApplied < MODE_REAPPLY_MS && now >= modeApplied)) {
+        int wanted = mode > 0 ? mode : (isCursorOn() ? MODE_MAP_PANNING : 0);
+        if (wanted <= 0 || (wanted == modeApplied && !modeLost)) {
             return;
         }
-        modeApplied = now;
+        modeApplied = wanted;
+        modeLost = false;
         try {
             ATIPEventListener receiver = event.getReceiver();
             if (!(receiver instanceof AbstractWindow)) {
-                log("M no window for mode " + mode);
+                log("M no window for mode " + wanted);
                 return;
             }
             AbstractWindow window = (AbstractWindow) receiver;
@@ -241,10 +356,10 @@ public final class TouchDiag {
                     .getKbdService();
             int before = kbd.getRecognizerMode();
             // Null settings: KbdHandler uses the defaults of the mode, as for the map screen
-            boolean set = kbd.setRecognizerMode(mode, null);
-            log("M mode=" + mode + " set=" + set + " before=" + before);
+            boolean set = kbd.setRecognizerMode(wanted, null);
+            log("M mode=" + wanted + " set=" + set + " before=" + before);
         } catch (Throwable t) {
-            log("M mode " + mode + " failed: " + t);
+            log("M mode " + wanted + " failed: " + t);
         }
     }
 
