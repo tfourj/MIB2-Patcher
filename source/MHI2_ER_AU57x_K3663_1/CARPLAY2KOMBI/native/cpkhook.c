@@ -5,6 +5,8 @@
  * in libnvss_video.so. This library sits in front of it, passes every call on
  * unchanged and, while /ramdisk/cpk/dump exists, copies the H.264 to
  * /ramdisk/cpk/video.h264 with one line per buffer in /ramdisk/cpk/index.txt.
+ * It also keeps the CarPlay session from dio_manager's calls into libairplay,
+ * so a recording can ask the iPhone for a new keyframe when it starts.
  *
  * Built without QNX headers: the few libc functions are declared here and
  * resolved against the unit's libc.so.3 at link time (see build.sh).
@@ -32,6 +34,7 @@ extern int fclose(FILE *file);
  * The mode is the one the firmware's mm-ipod passes to dlopen
  */
 #define NVSS_LIBRARY "libnvss_video.so"
+#define AIRPLAY_LIBRARY "libairplay.so"
 #define DLOPEN_MODE 0x100
 
 #define DUMP_TRIGGER "/ramdisk/cpk/dump"
@@ -51,9 +54,19 @@ struct nvss_buffer {
 
 typedef int (*decode_fn)(void *handle, struct nvss_buffer *buffer, u32 arg);
 typedef int (*configure_fn)(void *handle, const u8 *config);
+/* Forwards all four argument registers, for libairplay calls with up to four arguments */
+typedef int (*forward_fn)(void *a, void *b, void *c, void *d);
+/* AirPlayReceiverSessionForceKeyFrame(session, completion, context) */
+typedef int (*keyframe_fn)(void *session, void *completion, void *context);
 
 static decode_fn real_decode;
 static configure_fn real_configure;
+static forward_fn real_set_delegate;
+static forward_fn real_tear_down;
+static keyframe_fn real_force_keyframe;
+
+/* The CarPlay session, from AirPlayReceiverSessionSetDelegate until TearDown */
+static void *session;
 
 static FILE *video_file;
 static FILE *index_file;
@@ -63,17 +76,23 @@ static u32 frame_count;
 static void resolve(void)
 {
 	static void *nvss;
+	static void *airplay;
 
-	if (real_decode && real_configure)
-		return;
 	if (!nvss)
 		nvss = dlopen(NVSS_LIBRARY, DLOPEN_MODE);
-	if (!nvss)
-		return;
-	if (!real_decode)
+	if (nvss && !real_decode)
 		real_decode = (decode_fn)dlsym(nvss, "NvSSVideoDecode");
-	if (!real_configure)
+	if (nvss && !real_configure)
 		real_configure = (configure_fn)dlsym(nvss, "NvSSVideoStreamConfigure");
+
+	if (!airplay)
+		airplay = dlopen(AIRPLAY_LIBRARY, DLOPEN_MODE);
+	if (airplay && !real_set_delegate)
+		real_set_delegate = (forward_fn)dlsym(airplay, "AirPlayReceiverSessionSetDelegate");
+	if (airplay && !real_tear_down)
+		real_tear_down = (forward_fn)dlsym(airplay, "AirPlayReceiverSessionTearDown");
+	if (airplay && !real_force_keyframe)
+		real_force_keyframe = (keyframe_fn)dlsym(airplay, "AirPlayReceiverSessionForceKeyFrame");
 }
 
 /* Appends value as hex digits to out, returns the new end */
@@ -103,6 +122,25 @@ static void stop_dump(void)
 	index_file = 0;
 }
 
+/*
+ * The iPhone sends SPS, PPS and an IDR frame only at the start of a session.
+ * A recording that starts later asks for a new keyframe, so it can be decoded
+ * from its first frame. Logged as "keyframe <session> <result>"
+ */
+static void request_keyframe(void)
+{
+	char line[64] = "keyframe ";
+	char *p = line + 9;
+	int result = -1;
+
+	if (session && real_force_keyframe)
+		result = real_force_keyframe(session, 0, 0);
+	p = put_hex(p, (u32)session, 8);
+	*p++ = ' ';
+	p = put_hex(p, (u32)result, 8);
+	write_line(index_file, line, p);
+}
+
 /* True while dumping is wanted and possible. Opens the files on the first frame */
 static int dump_enabled(void)
 {
@@ -117,6 +155,7 @@ static int dump_enabled(void)
 			stop_dump();
 			return 0;
 		}
+		request_keyframe();
 	}
 	return 1;
 }
@@ -160,6 +199,26 @@ int NvSSVideoDecode(void *handle, struct nvss_buffer *buffer, u32 arg)
 	if (!real_decode)
 		return (int)0x80000000;
 	return real_decode(handle, buffer, arg);
+}
+
+/* dio_manager calls this when a CarPlay session starts: remember the session */
+int AirPlayReceiverSessionSetDelegate(void *a, void *b, void *c, void *d)
+{
+	resolve();
+	session = a;
+	if (!real_set_delegate)
+		return 0;
+	return real_set_delegate(a, b, c, d);
+}
+
+int AirPlayReceiverSessionTearDown(void *a, void *b, void *c, void *d)
+{
+	resolve();
+	if (a == session)
+		session = 0;
+	if (!real_tear_down)
+		return 0;
+	return real_tear_down(a, b, c, d);
 }
 
 int NvSSVideoStreamConfigure(void *handle, const u8 *config)
