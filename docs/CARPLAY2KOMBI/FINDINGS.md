@@ -196,6 +196,38 @@ Streaming writes nothing to flash: the video goes from memory to the MOST device
 
 Still open: navigation switches the cluster back (to the compass) when a route starts, see Open questions.
 
+## Reducing the delay
+
+The cluster still lags when CarPlay changes little. What was tried so far:
+
+| Change | Result |
+|---|---|
+| PES with its real length and an access unit delimiter after each frame (5febd07) | No better, reverted |
+| No PTS, frames shown as soon as they are decoded | Default now |
+| Draining the encoder right after each frame | Fixed the lag of seconds on a still screen |
+| Repeating the last picture 2 times after each change, 33 ms apart | Helps. A steady stream of repeats was too much for the cluster |
+
+So the cluster finds the end of a frame, but shows a decoded frame only when the next one arrives. Ideas, in the order to try them:
+
+1. **Measure the queue first.** Log the ring depth (`ring_head - ring_tail`) and how long each `write()` to `/dev/mlb/isoTX2` takes, next to the `R` and `O` lines of `/ramdisk/cpk/debug`.
+   If the depth climbs while CarPlay moves, or a write takes about 30 ms, the delay is the MOST channel queue (idea 2).
+2. **Stop padding every frame to a whole block.** `pack_frame` pads each frame to 64 packets (12032 bytes). A P frame of about 1.5 KB fills 9 of them, so most of each block is null packets.
+   At about 32 blocks a second (the ring's own estimate), every frame, repeat and filler costs about 31 ms of channel time, and 30 frames a second plus repeats keep the channel nearly full. Each block waiting in the ring adds about 31 ms; a full ring (32 blocks) is about a second.
+   Instead, keep TS packets back to back in a packet ring and let the writer take up to 64 at a time, padding only when nothing else is queued. A single frame still goes out at once, and under load several frames share a block.
+   This also explains why steady repeats were too much: they used channel time, not decoder time.
+3. **Repeat right away.** With idea 2, one repeat (a tiny skip frame) can go out straight after each CarPlay frame instead of after 33 ms of quiet, so the frame that just changed is pushed out of the cluster's decoder at once.
+4. **Tell the decoder not to hold frames.** Check the encoder's SPS in a recording (`/ramdisk/cpk/enc`):
+
+   ```sh
+   ffmpeg -i enc.h264 -c copy -bsf:v trace_headers -f null - 2>&1 | grep -E "pic_order_cnt_type|vui_parameters_present|bitstream_restriction|max_dec_frame_buffering|num_ref_frames"
+   ```
+
+   Without VUI `bitstream_restriction`, a decoder may keep up to the level's DPB size in frames (8 at level 3.0 for 800×298) before it shows one.
+   If it's missing, rewrite the SPS in the hook with `max_num_reorder_frames` 0 and `max_dec_frame_buffering` 1. `pic_order_cnt_type` 2 also lets a decoder show frames in decode order, but changing it means rewriting every slice header too.
+5. **Don't block CarPlay's render thread.** `drain` waits up to 30 ms per frame on CarPlay's render thread. Moving the drain and the repeats to the encoder's own thread keeps the main screen smooth. It doesn't change the cluster's delay.
+
+Put each change behind its own file in `/ramdisk/cpk/`, like `delay`, `fill` and `repeat`, so the current behaviour stays the default while testing.
+
 ## How to repeat the checks
 
 Over SSH on the MMX (see the README for setting up SSH):
