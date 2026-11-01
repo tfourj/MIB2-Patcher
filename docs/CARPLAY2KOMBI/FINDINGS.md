@@ -104,7 +104,10 @@ mount -uw /mnt/system && cp /mnt/persist/cpk/smartphone_integrator.json.orig /mn
 The hook keeps the session from `AirPlayReceiverSessionSetDelegate(session, delegate)`, which `dio_manager` calls at the start of a session, and drops it in `AirPlayReceiverSessionTearDown`.
 Asking for a keyframe returned 0, and the next buffers held SPS, PPS and an 8.7 KB IDR. So the stream can be started for the cluster at any time.
 
-**Not known yet:** the format the cluster decodes. `displaymanager` doesn't log its encoder settings, so the profile and resolution of the map stream, and whether the cluster accepts High profile at 780×468, are still open.
+**What the cluster gets.** `displaymanager` is started from the boot image, so there's no config to preload a recorder into it.
+Its encoder is `/lib/libnvvsenc.so` (NVIDIA TVMR encoder, muxed by `libnvtsmux.so`).
+`NvVideoStreamEncoderOpen` and `NvVideoStreamEncoderSetAttributes` both write `66` (H.264 Baseline `profile_idc`) into the TVMR configuration, next to 30 fps and the width and height from the attributes.
+So the cluster normally decodes **Baseline**, and CarPlay sends **High** profile. Passing it through only works if the cluster's decoder also handles High profile. That has to be tested on the cluster, or the stream has to be re-encoded as Baseline on the MMX.
 
 ## How to repeat the checks
 
@@ -118,7 +121,7 @@ Over SSH on the MMX (see the README for setting up SSH):
 
 ## Open questions
 
-- The cluster stream's profile, level and resolution, and whether the cluster decodes CarPlay's High profile 780×468.
+- Whether the cluster decodes CarPlay's High profile 780×468, when it normally gets Baseline from `libnvvsenc`.
 - How to send our own MPEG-TS on `/dev/mlb/isoTX2` while `displaymanager` keeps the MOST connection to the cluster open.
 - Whether the cluster would show a stream that is not map-like, or needs a particular foreground picture type (`setFGLayer`, never called by the HMI).
 - `getDisplayableInfo(59, 4)` exists in the DSI but has no caller; its answer wasn't checked.
