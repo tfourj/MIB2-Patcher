@@ -110,6 +110,7 @@ TOUCHDIAG 0.3.0 with `/ramdisk/touchdiag.cursor`, after restarting only CarPlay 
 - The cursor followed the finger, and a tap opened the app under it. The user: "works great".
 - Both axes ran the wrong way round: the `MOVED_REL` steps count opposite to the screen. 0.4.0 flips them.
 - The cursor stayed on screen when the pad wasn't used. 0.4.0 hides it after 5 seconds without touchpad use, with an HMI `Timer` through `TimerSyncer`, so the timeout also runs on the HMI thread.
+- Retested with 0.4.0: the cursor moves with the finger on both axes and hides after 5 seconds. With the cursor flag set before CarPlay connects, CarPlay starts with `inputFeatures=13` and needs no restart.
 
 ## Diagnostic
 
