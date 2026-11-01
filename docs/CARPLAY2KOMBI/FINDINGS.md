@@ -124,7 +124,20 @@ The writer is [`cpkinject.c`](../../source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/n
 | Baseline 800×480 test pattern, same layout | burst, then real time | grid background |
 | Baseline 800×480 colours: video PID `0x1011`, `0x11`, `0x21`, and `0x1011` with PMT `0x100`, PCR on the video PID | real time | grid background with the "Offroad" title |
 
-So neither the profile, the speed nor these PID layouts explain it. Not yet shown: whether the blocks reach the cluster at all while the map encoder is failing, or whether the cluster only shows a stream after navigation's fade-in and sync messages.
+So neither the profile, the speed nor these PID layouts explain it.
+
+**Our blocks do reach the cluster.** Written while the map was streaming, the 800×480 pattern made the cluster flicker between a grey picture and the map: it followed our PAT/PMT, but couldn't decode the picture.
+
+**The size has to be 800×298.** That's the cluster map size in `navi/app/map/Context` (`KOMBI_SCREEN_WIDTH` 800, `KOMBI_SCREEN_HEIGHT` 298).
+A Baseline 800×298 test pattern (video PID `0x1011`, PCR PID `0x100`, PMT `0x1000`, keyframe every 15 frames):
+
+| Delivery | Cluster |
+|---|---|
+| Mixed into the live map stream | the test pattern, glitching with the map |
+| Alone, cluster on context 77, paced by PCR | **the test pattern, smooth** |
+
+So the path works: stop the map encoder with `dmdt sc 4 77`, write whole 12032-byte blocks to `/dev/mlb/isoTX2` in real time, and switch back with `dmdt sc 4 73`.
+CarPlay's own stream is 780×468, so it can't be passed through unchanged. It has to be scaled to 800×298 and encoded again.
 
 ## How to repeat the checks
 
@@ -138,7 +151,7 @@ Over SSH on the MMX (see the README for setting up SSH):
 
 ## Open questions
 
-- Whether the cluster decodes CarPlay's High profile 780×468, when it normally gets Baseline from `libnvvsenc`.
-- Whether blocks written to `/dev/mlb/isoTX2` by another process reach the cluster, while `displaymanager` keeps the MOST connection open.
+- Whether the cluster decodes High profile at 800×298, or only Baseline.
+- How to get CarPlay frames at 800×298: decoding CarPlay's H.264 on the MMX and encoding it again.
 - Whether the cluster would show a stream that is not map-like, or needs a particular foreground picture type (`setFGLayer`, never called by the HMI).
 - `getDisplayableInfo(59, 4)` exists in the DSI but has no caller; its answer wasn't checked.
