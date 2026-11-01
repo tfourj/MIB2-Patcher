@@ -5,8 +5,16 @@ Sources analysed: `/ifs/lsd.jxe` from the unit (sha1 `2be4758b`), `dio_manager`,
 
 ## Status
 
-**Experimental, not one of the patches.** A diagnostic jar (TOUCHDIAG) in [`source/MHI2_ER_AU57x_K3663_1/TOUCHCURSOR/diag/`](../../source/MHI2_ER_AU57x_K3663_1/TOUCHCURSOR/diag) logs what the touchpad sends and can send it to CarPlay as touches.
-It isn't installed by MIB2-Patcher. See [Diagnostic](#diagnostic) for how to run it.
+**Now the TOUCHCURSOR patch** (see [README.md](README.md)), built from the cursor mode of the diagnostic below.
+The diagnostic jar (TOUCHDIAG) in [`source/MHI2_ER_AU57x_K3663_1/TOUCHCURSOR/diag/`](../../source/MHI2_ER_AU57x_K3663_1/TOUCHCURSOR/diag) stays experimental: it logs what the touchpad sends and has the test modes.
+It isn't installed by MIB2-Patcher, and installing TOUCHCURSOR removes it. See [Diagnostic](#diagnostic) for how to run it.
+
+What the patch does differently from TOUCHDIAG 0.4.0's cursor mode:
+
+- No log of every event, no flag files: installed means on. Errors go to `/mnt/persist/touchcursor.log`.
+- It only acts while a CarPlay session runs, from `startService` until the CarPlay DSI service goes away (`dio_manager` only runs during a session). Without it the CarPlay screen and touchpad are stock.
+- It switches the keypanel to map panning on the first press after CarPlay starts, after coming back from another screen, and after touchpad encoder keys show the terminal mode app set its own mode again.
+- The knob turns logged during the cursor tests were all from the knob itself (key 17, source 1), so the patch leaves the knob alone.
 
 ## TL;DR
 
