@@ -109,6 +109,23 @@ Its encoder is `/lib/libnvvsenc.so` (NVIDIA TVMR encoder, muxed by `libnvtsmux.s
 `NvVideoStreamEncoderOpen` and `NvVideoStreamEncoderSetAttributes` both write `66` (H.264 Baseline `profile_idc`) into the TVMR configuration, next to 30 fps and the width and height from the attributes.
 So the cluster normally decodes **Baseline**, and CarPlay sends **High** profile. Passing it through only works if the cluster's decoder also handles High profile. That has to be tested on the cluster, or the stream has to be re-encoded as Baseline on the MMX.
 
+## Passthrough: injection tests
+
+Test streams were written to `/dev/mlb/isoTX2` while the cluster was on context 77, which stops the map encoder (it fails on the CarPlay displayable).
+The writer is [`cpkinject.c`](../../source/MHI2_ER_AU57x_K3663_1/CARPLAY2KOMBI/native/cpkinject.c). It runs as a library constructor inside any host program, because there are no QNX startup files to link a program.
+
+- **The driver only takes whole blocks.** `displaymanager` asks for `MLB_DEVCTL_GET_IF_PACKET_SIZE` and `..._BLOCK_CNT` and writes 64 × 188 = 12032 bytes at a time.
+  Writes of other sizes (`cat`) succeed but are dropped. `/dev/mlb/debug/isoTX2` shows the driver's block counter, and a test with an empty file shows that `displaymanager`'s retry loop adds about 15 blocks on its own.
+- **Whole blocks are counted as sent.** With `dd bs=12032`, or with `cpkinject` pacing each block by the stream's PCR, every block of the test streams shows up in the counter.
+
+| Stream | Delivery | Cluster |
+|---|---|---|
+| CarPlay recording, High 780×468, video PID `0x1011` or `0x11`, PCR PID `0x100` | burst | grid background |
+| Baseline 800×480 test pattern, same layout | burst, then real time | grid background |
+| Baseline 800×480 colours: video PID `0x1011`, `0x11`, `0x21`, and `0x1011` with PMT `0x100`, PCR on the video PID | real time | grid background with the "Offroad" title |
+
+So neither the profile, the speed nor these PID layouts explain it. Not yet shown: whether the blocks reach the cluster at all while the map encoder is failing, or whether the cluster only shows a stream after navigation's fade-in and sync messages.
+
 ## How to repeat the checks
 
 Over SSH on the MMX (see the README for setting up SSH):
@@ -122,6 +139,6 @@ Over SSH on the MMX (see the README for setting up SSH):
 ## Open questions
 
 - Whether the cluster decodes CarPlay's High profile 780×468, when it normally gets Baseline from `libnvvsenc`.
-- How to send our own MPEG-TS on `/dev/mlb/isoTX2` while `displaymanager` keeps the MOST connection to the cluster open.
+- Whether blocks written to `/dev/mlb/isoTX2` by another process reach the cluster, while `displaymanager` keeps the MOST connection open.
 - Whether the cluster would show a stream that is not map-like, or needs a particular foreground picture type (`setFGLayer`, never called by the HMI).
 - `getDisplayableInfo(59, 4)` exists in the DSI but has no caller; its answer wasn't checked.
