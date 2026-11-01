@@ -17,17 +17,25 @@ LIBC="${LIBC:?set LIBC to the unit libc.so.3}"
 
 mkdir -p build
 
-# ARM mode, no floats in our calls, nothing the QNX loader lacks (unwind tables, stack protector)
-"$LLVM/clang" -target armv7a-none-eabi -marm -mfloat-abi=soft -fPIC -O2 -Wall -Wextra \
-    -ffreestanding -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables \
-    -c cpkhook.c -o build/cpkhook.o
+# Builds build/lib<name>.so from <name>.c
+build_lib() {
+    local name="$1"
 
-# The QNX loader only reads SYSV hash tables. libc's section table is broken, so lld can't
-# read its soname: link it by file name, so DT_NEEDED is libc.so.3 and not the path on this Mac
-"$LLD" -shared --hash-style=sysv -soname libcpkhook.so -z noexecstack \
-    -o build/libcpkhook.so build/cpkhook.o -L "$(dirname "$LIBC")" "-l:$(basename "$LIBC")"
+    # ARM mode, no floats in our calls, nothing the QNX loader lacks (unwind tables, stack protector)
+    "$LLVM/clang" -target armv7a-none-eabi -marm -mfloat-abi=soft -fPIC -O2 -Wall -Wextra \
+        -ffreestanding -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables \
+        -c "$name.c" -o "build/$name.o"
 
-"$LLVM/llvm-readelf" -d build/libcpkhook.so | grep -E "NEEDED|SONAME|HASH|INIT"
-"$LLVM/llvm-readelf" -d build/libcpkhook.so | grep -q "Shared library: \[libc.so.3\]" ||
-    { echo "error: DT_NEEDED is not libc.so.3" >&2; exit 1; }
-echo "built build/libcpkhook.so"
+    # The QNX loader only reads SYSV hash tables. libc's section table is broken, so lld can't
+    # read its soname: link it by file name, so DT_NEEDED is libc.so.3 and not the path on this Mac
+    "$LLD" -shared --hash-style=sysv -soname "lib$name.so" -z noexecstack \
+        -o "build/lib$name.so" "build/$name.o" -L "$(dirname "$LIBC")" "-l:$(basename "$LIBC")"
+
+    "$LLVM/llvm-readelf" -d "build/lib$name.so" | grep -q "Shared library: \[libc.so.3\]" ||
+        { echo "error: DT_NEEDED of lib$name.so is not libc.so.3" >&2; exit 1; }
+    echo "built build/lib$name.so"
+}
+
+# cpkhook: preloaded into dio_manager. cpkinject: test writer for the cluster's MOST channel
+build_lib cpkhook
+build_lib cpkinject
