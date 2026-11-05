@@ -12,7 +12,7 @@ Turns the **MMI touchpad** of an Audi MHI2 into a **cursor for Apple CarPlay**, 
 Outside CarPlay the touchpad works as stock.
 
 > [!WARNING]
-> **This build is not tested yet.** The same code ran in a diagnostic jar on one car, an A6 C7 with `MHI2_ER_AU57x_K3663_1` (see [FINDINGS.md](FINDINGS.md)).
+> **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > If something is wrong, the MMI screen software may not start (black screen, no GEM).
 > A [boot guard](#safeguards) turns the patch off by itself after one failed start. SSH is still the best way to undo things. Use at your own risk.
 

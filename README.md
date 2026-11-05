@@ -11,7 +11,7 @@ Patches are sorted by firmware train, and the patcher only offers the ones built
 | TEL2ACP | The TEL key opens Apple CarPlay | ✅ Tested | [README](docs/TEL2ACP/README.md) |
 | MENUSCREEN | A MENU tile that opens a screen with Open GEM, Open REM and Restart CarPlay | ✅ Tested | [README](docs/MENUSCREEN/README.md) |
 | NAVIGNORE | The MMI navigation keeps running when a CarPlay route starts | ✅ Tested | [README](docs/NAVIGNORE/README.md) |
-| TOUCHCURSOR | The MMI touchpad moves a cursor in CarPlay, and a tap touches where it is | 🧪 Not tested yet | [README](docs/TOUCHCURSOR/README.md) |
+| TOUCHCURSOR | The MMI touchpad moves a cursor in CarPlay, and a tap touches where it is | ✅ Tested | [README](docs/TOUCHCURSOR/README.md) |
 
 | Train | Unit | Patches |
 |---|---|---|
