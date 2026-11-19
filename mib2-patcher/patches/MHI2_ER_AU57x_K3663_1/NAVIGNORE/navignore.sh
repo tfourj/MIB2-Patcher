@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# NAVIGNORE v1.0.0 - the MMI navigation keeps running when a CarPlay route starts
+# NAVIGNORE v1.0.1 - the MMI navigation keeps running when a CarPlay route starts
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
 # Usage: navignore.sh <command> [-force]
@@ -17,7 +17,7 @@
 # (mod/command.sh) or from the NAVIGNORE GEM screen. Reboot the MMI after
 # install, uninstall and restore.
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
