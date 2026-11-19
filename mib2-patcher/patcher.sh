@@ -111,6 +111,21 @@ sha1_of() {
 	return 1
 }
 
+# Firmware id: the sha1 of the first 64 bytes of lsd.jxe. They are the zip header
+# with the CRC-32 and size of rom.classes, so each firmware build has its own id,
+# and reading them takes no time (the sha1 of the whole 45 MB file took a minute)
+jxe_id() {
+	for tmp in "/tmp/jxe_id.$$" "$DATA/jxe_id.$$"; do
+		dd if="$1" of="$tmp" bs=64 count=1 2> /dev/null || continue
+		id=$(sha1_of "$tmp")
+		rm -f "$tmp"
+		[ -n "$id" ] || continue
+		echo "$id"
+		return 0
+	done
+	return 1
+}
+
 check_not_busy() {
 	for lock in backup reboot flash; do
 		if [ -f "$SHMEM/$lock.mib" ]; then
@@ -199,19 +214,18 @@ move_unit_logs() {
 	done
 }
 
-# Picks the folder in $1/patches whose lsd.jxe.sha1 matches the unit. The sha1 is
-# exported, so the patch installers don't spend another minute on the 45 MB file
+# Picks the folder in $1/patches whose lsd.jxe.id matches the unit. The id is
+# exported, so the patch installers don't read the firmware again
 detect_train() {
 	[ -f "$LSD_JXE" ] || die "$LSD_JXE not found"
-	log "firmware:   checking, this can take a minute..."
-	sum=$(sha1_of "$LSD_JXE")
+	sum=$(jxe_id "$LSD_JXE")
 	if [ -n "$sum" ]; then
-		log "lsd.jxe sha1: $sum"
+		log "firmware id: $sum"
 		for d in "$1/patches"/*; do
-			if [ "$(cat "$d/lsd.jxe.sha1" 2> /dev/null)" = "$sum" ]; then
+			if [ "$(cat "$d/lsd.jxe.id" 2> /dev/null)" = "$sum" ]; then
 				TRAIN="${d##*/}"
-				PATCHER_JXE_SHA1="$sum"
-				export PATCHER_JXE_SHA1
+				PATCHER_JXE_ID="$sum"
+				export PATCHER_JXE_ID
 				log "train:      $TRAIN"
 				return 0
 			fi
@@ -227,23 +241,22 @@ detect_train() {
 }
 
 # Checks once that the firmware still is the installed train, and exports the
-# sha1 for the patch installers. With "warn" a mismatch is only reported
+# id for the patch installers. With "warn" a mismatch is only reported
 verify_firmware() {
-	[ -n "$PATCHER_JXE_SHA1" ] && return 0
-	log "firmware:   checking, this can take a minute..."
-	sum=$(sha1_of "$LSD_JXE")
+	[ -n "$PATCHER_JXE_ID" ] && return 0
+	sum=$(jxe_id "$LSD_JXE")
 	if [ -z "$sum" ]; then
-		log "WARNING: no sha1sum tool found, the patch installers check the firmware themselves"
+		log "WARNING: no dd or sha1sum tool found, the patch installers check the firmware themselves"
 		return 0
 	fi
-	if [ "$sum" = "$(cat "$PATCHES/$TRAIN/lsd.jxe.sha1" 2> /dev/null)" ]; then
-		PATCHER_JXE_SHA1="$sum"
-		export PATCHER_JXE_SHA1
+	if [ "$sum" = "$(cat "$PATCHES/$TRAIN/lsd.jxe.id" 2> /dev/null)" ]; then
+		PATCHER_JXE_ID="$sum"
+		export PATCHER_JXE_ID
 		log "firmware:   $TRAIN"
 		return 0
 	fi
-	[ "$1" = warn ] && { log "firmware:   NOT $TRAIN any more (lsd.jxe sha1 $sum), run update-force from a card"; return 0; }
-	[ $FORCE = 1 ] || die "the firmware is not $TRAIN any more (lsd.jxe sha1 $sum), run update-force from a card"
+	[ "$1" = warn ] && { log "firmware:   NOT $TRAIN any more (firmware id $sum), run update-force from a card"; return 0; }
+	[ $FORCE = 1 ] || die "the firmware is not $TRAIN any more (firmware id $sum), run update-force from a card"
 	log "WARNING: the firmware is not $TRAIN any more, continuing because of -force"
 }
 
