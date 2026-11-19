@@ -69,8 +69,8 @@ PERSIST="/net/mmx/mnt/persist"
 FLAG_PENDING="$PERSIST/touchcursor_pending"
 FLAG_DISABLED="$PERSIST/touchcursor_disabled"
 
-# sha1 of lsd.jxe on MHI2_ER_AU57x_K3663_1 (MU1425), the firmware the patch was built from
-SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
+# Firmware id (see jxe_id) of MHI2_ER_AU57x_K3663_1 (MU1425), the firmware the patch was built from
+SUPPORTED_JXE_ID="0b0340deda476160cd63d54ca2e36f316d08c068"
 
 # M.I.B. lock files: do not run while M.I.B. is flashing, backing up or rebooting
 SHMEM="/net/rcc/dev/shmem"
@@ -111,6 +111,21 @@ sha1_of() {
 	return 1
 }
 
+# Firmware id: the sha1 of the first 64 bytes of lsd.jxe. They are the zip header
+# with the CRC-32 and size of rom.classes, so each firmware build has its own id,
+# and reading them takes no time (the sha1 of the whole 45 MB file took a minute)
+jxe_id() {
+	for tmp in "/tmp/jxe_id.$$" "$DATA/jxe_id.$$"; do
+		dd if="$1" of="$tmp" bs=64 count=1 2> /dev/null || continue
+		id=$(sha1_of "$tmp")
+		rm -f "$tmp"
+		[ -n "$id" ] || continue
+		echo "$id"
+		return 0
+	done
+	return 1
+}
+
 # The lsd.sh line that starts the J9 VM. Other trains use $J9, MU1425 runs
 # "on -p 12 /ifs/jre/bin/j9 $VMOPTIONS -Xbootclasspath:$BOOTCLASSPATH ..."
 is_j9_line() {
@@ -142,15 +157,15 @@ check_not_busy() {
 
 check_firmware() {
 	[ -f "$LSD_JXE" ] || die "$LSD_JXE not found"
-	# patcher.sh exports the sha1 it already checked
-	sum=${PATCHER_JXE_SHA1:-$(sha1_of "$LSD_JXE")}
+	# patcher.sh exports the id it already checked
+	sum=${PATCHER_JXE_ID:-$(jxe_id "$LSD_JXE")}
 	if [ -z "$sum" ]; then
-		[ $FORCE = 1 ] || die "no sha1sum tool found to check the firmware (use -force to skip)"
+		[ $FORCE = 1 ] || die "no dd or sha1sum tool found to check the firmware (use -force to skip)"
 		log "WARNING: firmware check skipped"
 		return
 	fi
-	log "lsd.jxe sha1: $sum"
-	if [ "$sum" != "$SUPPORTED_JXE_SHA1" ]; then
+	log "firmware id: $sum"
+	if [ "$sum" != "$SUPPORTED_JXE_ID" ]; then
 		[ $FORCE = 1 ] || die "unsupported firmware, TOUCHCURSOR was built for MHI2_ER_AU57x_K3663_1 only"
 		log "WARNING: unsupported firmware, continuing because of -force"
 	fi
@@ -374,16 +389,14 @@ do_status() {
 	fi
 	if [ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ]; then log "GEM screen: on"; else log "GEM screen: off"; fi
 
-	# Last, because the checksum of the 45 MB lsd.jxe takes a while
-	log "firmware:   checking, this can take a minute..."
-	# patcher.sh exports the sha1 it already checked
-	sum=${PATCHER_JXE_SHA1:-$(sha1_of "$LSD_JXE")}
+	# patcher.sh exports the id it already checked
+	sum=${PATCHER_JXE_ID:-$(jxe_id "$LSD_JXE")}
 	if [ -z "$sum" ]; then
-		log "firmware:   unknown (no sha1sum tool)"
-	elif [ "$sum" = "$SUPPORTED_JXE_SHA1" ]; then
+		log "firmware:   unknown (no dd or sha1sum tool)"
+	elif [ "$sum" = "$SUPPORTED_JXE_ID" ]; then
 		log "firmware:   supported (MHI2_ER_AU57x_K3663_1)"
 	else
-		log "firmware:   NOT supported (lsd.jxe sha1 $sum)"
+		log "firmware:   NOT supported (firmware id $sum)"
 	fi
 }
 
