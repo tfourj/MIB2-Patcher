@@ -3,7 +3,9 @@
 # MIB2-Patcher v1.3.0 - one GEM entry for every patch that fits the unit's firmware
 # Patches live in patches/<train>/<PATCH>, each with its own installer and GEM screens.
 # "update" copies the patcher and the patches of the unit's train from the SD card
-# to /mnt/app/eso/mib2-patcher, so the GEM screens work without the card afterwards
+# to /mnt/app/eso/mib2-patcher, so the GEM screens work without the card afterwards.
+# config.txt next to this script picks the patches update copies. Patches set to off
+# are not copied, don't show in the GEM and are uninstalled by the next update
 #
 # Usage: patcher.sh [-force] <action> [<action>...]
 #        patcher.sh [-force] <PATCH> <command> [args...]
@@ -12,7 +14,7 @@
 #                 that are installed
 #   update-force  the same, also when nothing on the card is newer or something is older
 #   status        show the version, the train and the status of every patch
-#   install       install every patch of the train
+#   install       install every patch on the unit (the ones config.txt turns on)
 #   uninstall     uninstall every patch and remove MIB2-Patcher from the unit
 #   gem-on        add the MIB2_Patcher screen and the screens of every patch to the GEM
 #   gem-off       remove them from the GEM
@@ -72,8 +74,12 @@ ESD_LINK="$ENGDEFS/z_0mib2patcher.esd"
 # M.I.B. lock files: do not run while M.I.B. is flashing, backing up or rebooting
 SHMEM="/net/rcc/dev/shmem"
 
+# Picks the patches update copies, see patch_enabled. update keeps a copy on the unit
+CONFIG_NAME="config.txt"
+
 FORCE=0
 TRAIN=""
+CR=$(printf '\r')
 
 mkdir -p "$DATA" 2> /dev/null
 
@@ -260,6 +266,31 @@ verify_firmware() {
 	log "WARNING: the firmware is not $TRAIN any more, continuing because of -force"
 }
 
+# True if config file $1 turns patch $2 on with a "<PATCH>=on" line. Without the
+# file every patch is on, and a patch the file doesn't name is off. Spaces and
+# the CRLF line endings of Windows editors are ignored
+patch_enabled() {
+	[ -f "$1" ] || return 0
+	v=off
+	while IFS= read -r l || [ -n "$l" ]; do
+		l="${l%$CR}"
+		case "$l" in
+			'#'*|*'='*'='*) continue ;;
+			*=*) ;;
+			*) continue ;;
+		esac
+		k="${l%%=*}"
+		set -- "$1" "$2" $k
+		[ "$3" = "$2" ] || continue
+		set -- "$1" "$2" ${l#*=}
+		v="$3"
+	done < "$1"
+	case "$v" in
+		on|ON|On) return 0 ;;
+	esac
+	return 1
+}
+
 # Patch folders of the train, one per line
 patch_names() {
 	for d in "$PATCHES/$TRAIN"/*; do
@@ -299,7 +330,8 @@ compare_part() {
 
 # Compares the patcher and the patches of the unit's train on the card ($1) with
 # the copy on the unit. Returns 0 when something is newer and nothing older,
-# 1 when nothing is newer, 2 when something is older (only Force update installs that)
+# 1 when nothing is newer, 2 when something is older (only Force update installs that).
+# A patch that the card's config.txt turns on or off counts as newer
 compare_card() {
 	card_newer=0
 	card_older=0
@@ -308,7 +340,15 @@ compare_card() {
 	if [ -n "$unit_train" ]; then
 		for d in "$1/patches/$unit_train"/*; do
 			[ -d "$d" ] || continue
-			compare_part "${d##*/}" "$(installer_in "$d")" "$(installer_in "$PATCHES/$unit_train/${d##*/}")"
+			name="${d##*/}"
+			if ! patch_enabled "$1/$CONFIG_NAME" "$name"; then
+				if [ -d "$PATCHES/$unit_train/$name" ]; then
+					log "changed:    $name is off in $CONFIG_NAME on the card"
+					card_newer=1
+				fi
+				continue
+			fi
+			compare_part "$name" "$(installer_in "$d")" "$(installer_in "$PATCHES/$unit_train/$name")"
 		done
 	fi
 	[ $card_older = 1 ] && return 2
@@ -387,17 +427,36 @@ mmx_step() {
 	update_step "$@" || update_step on -f mmx "$@"
 }
 
-# Copies the patcher and the train's patches from the card ($1) to $stage.
-# With "mmx" as $2, every step runs on the MMX
+# Copies the patcher, config.txt and the train's patches that config.txt turns on
+# from the card ($1) to $stage. With "mmx" as $2, every step runs on the MMX
 stage_copy() {
 	run_on=""
 	[ "$2" = mmx ] && run_on="on -f mmx"
 	update_step $run_on rm -rf "$stage" &&
 		update_step $run_on mkdir -p "$stage/patches" &&
 		update_step $run_on cp "$1/patcher.sh" "$stage/patcher.sh" &&
+		copy_config "$1" &&
 		copy_tree "$1/esd" "$stage/esd" &&
-		copy_tree "$1/patches/$TRAIN" "$stage/patches/$TRAIN" &&
+		copy_train "$1" "$stage/patches/$TRAIN" &&
 		update_step $run_on /bin/sh -c 'echo "$1" > "$2/train"' sh "$TRAIN" "$stage"
+}
+
+copy_config() {
+	[ -f "$1/$CONFIG_NAME" ] || return 0
+	update_step $run_on cp "$1/$CONFIG_NAME" "$stage/$CONFIG_NAME"
+}
+
+# Copies the files of the train folder and the patch folders config.txt turns on
+copy_train() {
+	update_step $run_on mkdir -p "$2" || return 1
+	for f in "$1/patches/$TRAIN"/*; do
+		if [ -d "$f" ]; then
+			patch_enabled "$1/$CONFIG_NAME" "${f##*/}" || continue
+			copy_tree "$f" "$2/${f##*/}" || return 1
+		elif [ -f "$f" ]; then
+			update_step $run_on cp "$f" "$2/${f##*/}" || return 1
+		fi
+	done
 }
 
 # Copies folder $1 to $2 file by file, on $run_on. The glob skips hidden files, like
@@ -471,13 +530,24 @@ do_update() {
 		die "could not copy MIB2-Patcher to the unit, nothing changed"
 	fi
 
-	# Patches the new version no longer has are uninstalled by their old installer
+	# Patches the new version no longer has, or that config.txt turns off, are
+	# uninstalled by their old installer. If they aren't installed, their GEM screens are removed
 	for name in $(patch_names); do
-		if [ ! -d "$src/patches/$TRAIN/$name" ] && is_installed "$name"; then
-			log "-- $name is not in $new any more, uninstalling it"
-			run_patch "$name" uninstall
-			mount_rw
+		if [ ! -d "$src/patches/$TRAIN/$name" ]; then
+			why="is not in $new any more"
+		elif ! patch_enabled "$src/$CONFIG_NAME" "$name"; then
+			why="is off in $CONFIG_NAME"
+		else
+			continue
 		fi
+		if is_installed "$name"; then
+			log "-- $name $why, uninstalling it"
+			run_patch "$name" uninstall
+		else
+			log "-- $name $why, removing its GEM screens"
+			run_patch "$name" gem-off
+		fi
+		mount_rw
 	done
 
 	if [ -d "$UNIT_DIR" ]; then
@@ -527,6 +597,9 @@ do_status() {
 			2) log "update:     ${src%/*} has an older version of a part, only Force update installs it" ;;
 			*) log "update:     none ($(read_version "$src/patcher.sh") on ${src%/*})" ;;
 		esac
+	fi
+	if [ -f "$UNIT_DIR/$CONFIG_NAME" ]; then
+		log "patches:    $(echo $(patch_names)) (picked by $CONFIG_NAME)"
 	fi
 	verify_firmware warn
 	run_all status
