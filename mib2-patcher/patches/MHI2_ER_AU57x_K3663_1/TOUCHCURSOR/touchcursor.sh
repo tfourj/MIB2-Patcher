@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# TOUCHCURSOR v1.0.0 - the MMI touchpad moves a cursor in Apple CarPlay, a tap touches where it is
+# TOUCHCURSOR v1.0.1 - the MMI touchpad moves a cursor in Apple CarPlay, a tap touches where it is
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
 # Usage: touchcursor.sh <command> [-force]
@@ -17,7 +17,7 @@
 # (mod/command.sh) or from the TOUCHCURSOR GEM screen. Reboot the MMI after
 # install, uninstall and restore.
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
