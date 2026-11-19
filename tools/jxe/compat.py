@@ -68,7 +68,7 @@ JAVA_MODIFIER_MASK = 0xFFFF
 
 FITS, REBUILD, UNSUPPORTED = 0, 1, 2
 VERDICTS = {
-    FITS: "FITS: the TEL2ACP jar works unchanged, add the lsd.jxe sha1 to the installer",
+    FITS: "FITS: the TEL2ACP jar works unchanged, add the firmware id to the installer",
     REBUILD: "REBUILD: the patch idea works, but the jar must be rebuilt from this firmware",
     UNSUPPORTED: "NOT SUPPORTED: something the patch relies on is missing or different",
 }
@@ -105,6 +105,12 @@ def sha1_of(path):
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def jxe_id_of(path):
+    """The installers' firmware id: the sha1 of the first 64 bytes (zip header with rom.classes' CRC-32 and size)."""
+    with open(path, "rb") as f:
+        return hashlib.sha1(f.read(64)).hexdigest()
 
 
 def normalize(cls, method):
@@ -419,7 +425,7 @@ def main():
 
     print("\n" + VERDICTS[report.level])
     if report.level == FITS:
-        print("  sha1 for tel2acp.sh: %s" % sha1)
+        print("  firmware id for tel2acp.sh and lsd.jxe.id: %s" % jxe_id_of(args.jxe))
     sys.exit(report.level)
 
 
