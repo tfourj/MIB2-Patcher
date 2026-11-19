@@ -144,7 +144,7 @@ It compares the firmware against the K3663 reference in `compat_ref.json` and ch
 
 | Verdict | Exit | Meaning |
 |---|---|---|
-| `FITS` | 0 | The jar works as is. Add the printed sha1 to `tel2acp.sh` and a train folder for it (see the [README](../README.md#adding-a-train)). |
+| `FITS` | 0 | The jar works as is. Add the printed firmware id to `tel2acp.sh` and a train folder for it (see the [README](../README.md#adding-a-train)). |
 | `REBUILD` | 1 | The patch should work, but the jar must be rebuilt from this firmware's `HardKeyManager` and ids |
 | `NOT SUPPORTED` | 2 | Something the patch needs is missing |
 

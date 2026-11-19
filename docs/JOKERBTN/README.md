@@ -115,7 +115,7 @@ Or use **Uninstall** in the GEM screen, or add a line `JOKERBTN uninstall` to `P
 
 **Before changing anything**, the installer checks that:
 
-- the firmware is exactly `MHI2_ER_AU57x_K3663_1` (checksum of `/ifs/lsd.jxe`)
+- the firmware is exactly `MHI2_ER_AU57x_K3663_1` (firmware id of `/ifs/lsd.jxe`)
 - `JOKERBTN.jar` in MIB2-Patcher isn't damaged, and the copy the HMI loads matches it
 - `lsd.sh` has the expected layout, and MFLBTN isn't installed
 - `/mnt/persist` is writable (the boot guard needs it)
@@ -152,7 +152,7 @@ See [Setting up SSH](../../README.md#setting-up-ssh) in the main README.
 - Uses three small flag files in `/mnt/persist` (`jokerbtn_pending`, `jokerbtn_loaded`, `jokerbtn_disabled`).
 - Saves the original `lsd.sh` as `lsd.sh.jokerbtn.bak` on the unit and `/mnt/persist/mib2-patcher/JOKERBTN/backup/lsd.sh`.
 
-`uninstall` and `restore` also delete the settings file. `-force` installs anyway when the firmware doesn't match or no `sha1sum` tool is found. A damaged jar is never installed.
+`uninstall` and `restore` also delete the settings file. `-force` installs anyway when the firmware doesn't match or no `dd` or `sha1sum` tool is found. A damaged jar is never installed.
 
 ## Build from source
 

@@ -124,7 +124,7 @@ Or use **Uninstall** in the GEM screen, or add a line `TEL2ACP uninstall` to `PA
 
 **Before changing anything**, the installer checks that:
 
-- the firmware is exactly `MHI2_ER_AU57x_K3663_1` (checksum of `/ifs/lsd.jxe`)
+- the firmware is exactly `MHI2_ER_AU57x_K3663_1` (firmware id of `/ifs/lsd.jxe`)
 - `TEL2ACP.jar` in MIB2-Patcher isn't damaged, and the copy the HMI loads matches it
 - `lsd.sh` has the expected layout
 - `/mnt/persist` is writable (the boot guard needs it)
@@ -163,7 +163,7 @@ See [Setting up SSH](../../README.md#setting-up-ssh) in the main README.
   the CarPlay keys in `/mnt/persist/tel2acp_key_nav`, `tel2acp_key_radio` and `tel2acp_key_media` (no file means off).
 - Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `/mnt/persist/mib2-patcher/TEL2ACP/backup/lsd.sh`.
 
-`-force` installs anyway when the firmware doesn't match or no `sha1sum` tool is found. A damaged jar is never installed.
+`-force` installs anyway when the firmware doesn't match or no `dd` or `sha1sum` tool is found. A damaged jar is never installed.
 
 ## Build from source
 

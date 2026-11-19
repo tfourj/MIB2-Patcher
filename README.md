@@ -104,7 +104,8 @@ on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh <command>
 Several commands can follow each other, e.g. `patcher.sh update install`. `-force` before the command passes `-force` to the patch installers,
 and uses the only train folder when the firmware matches none.
 
-The first `update` picks the train by comparing the checksum of `/ifs/lsd.jxe` with `lsd.jxe.sha1` in each train folder, which takes about a minute.
+The first `update` picks the train by comparing the firmware id with `lsd.jxe.id` in each train folder.
+The id is the sha1 of the first 64 bytes of `/ifs/lsd.jxe`. They hold the CRC-32 and size of its classes, so the check is instant.
 The unit copy remembers it. `patcher.sh` on the card only runs `update` itself and passes every other command on to the copy on the unit.
 
 ## Uninstall
@@ -148,7 +149,7 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
 | Path | Contents |
 |---|---|
 | `mib2-patcher/` | The folder that goes on the SD card: `patcher.sh`, the `command.sh` hook and the MIB2_Patcher GEM screen. `update` copies it to the unit |
-| `mib2-patcher/patches/<train>/` | `lsd.jxe.sha1` of the train, and one folder per patch with its jar, installer and GEM screens |
+| `mib2-patcher/patches/<train>/` | `lsd.jxe.id` of the train, and one folder per patch with its jar, installer and GEM screens |
 | `source/<train>/<patch>/` | Java source of the patch (`src/`) and compile-only firmware stubs (`stubs/`) |
 | `docs/<patch>/` | README and firmware findings of each patch |
 | `docs/CARPLAY2KOMBI/` | Findings on showing CarPlay in the cluster (experimental, not one of the patches) |
@@ -193,10 +194,10 @@ The workflow stops if the tag doesn't match `VERSION`.
 ## Adding a train
 
 1. Make a folder `mib2-patcher/patches/<train>` with the train name M.I.B. shows, e.g. `MHI2_ER_AU57x_K3663_1`.
-2. Put the sha1 of that firmware's `lsd.jxe` in `lsd.jxe.sha1` in it.
+2. Put the firmware id of that firmware's `lsd.jxe` in `lsd.jxe.id` in it: `head -c 64 lsd.jxe | sha1sum`. [`compat.py`](docs/TOOLS.md#compatpy) prints it too.
 3. For each patch, check it against the firmware with [`checkrefs.py`](docs/TOOLS.md#checkrefspy) (and [`compat.py`](docs/TOOLS.md#compatpy) for TEL2ACP).
    Copy the patch folder, or put adapted source in `source/<train>/<patch>` and build it.
-4. In the copied folder, set `SUPPORTED_JXE_SHA1` in the installer and change the train name in the paths in `esd/*.esd`.
+4. In the copied folder, set `SUPPORTED_JXE_ID` in the installer and change the train name in the paths in `esd/*.esd`.
 
 ## Adding a patch
 
