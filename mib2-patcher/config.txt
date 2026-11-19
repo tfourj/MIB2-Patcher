@@ -1,0 +1,14 @@
+# MIB2-Patcher config
+#
+# Picks the patches that "Update from SD card" copies to the unit.
+# A patch set to off is not copied, doesn't show in the GEM, and the next
+# update uninstalls it. A patch that is not listed here is off.
+# Without this file every patch is copied.
+#
+# After a change, run Update from SD card, then reboot the MMI.
+
+JOKERBTN=on
+MENUSCREEN=on
+NAVIGNORE=on
+TEL2ACP=on
+TOUCHCURSOR=on
