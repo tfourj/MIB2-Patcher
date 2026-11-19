@@ -10,7 +10,7 @@
 # PATCHER_RUN selects what runs, one patcher.sh call per line:
 #   update                 copy MIB2-Patcher to the unit and add its GEM screen (default)
 #   update-force           the same, also when the unit has the same version
-#   install                install every patch of the train
+#   install                install every patch that config.txt turns on
 #   uninstall              remove every patch and MIB2-Patcher again
 #   status                 only write the status to the logs
 #   <PATCH> <command>      run one patch's installer

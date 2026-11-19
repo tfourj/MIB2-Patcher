@@ -30,6 +30,7 @@ Patches are sorted by firmware train, and the patcher only offers the ones built
 ## Install
 
 1. Copy the `mib2-patcher` folder to the root of the M.I.B. SD card.
+   To leave out patches you don't want, turn them off in `mib2-patcher/config.txt` (see [Choosing patches](#choosing-patches)).
 2. Put the card in SD1 and copy MIB2-Patcher to the unit, using **one** of these:
 
    **Over SSH**
@@ -57,9 +58,27 @@ The GEM screens run from there, so the SD card isn't needed any more.
    **Force update from SD card** installs the card's version anyway, for example to repair the copy on the unit.
 4. Reboot the MMI.
 
-An update keeps the patch settings. It reinstalls every patch that is installed, so new jars take effect, and uninstalls installed patches the new version no longer has.
+An update keeps the patch settings. It reinstalls every patch that is installed, so new jars take effect, and uninstalls installed patches the new version no longer has or `config.txt` turns off.
 Reinstalling also re-arms a patch that its boot guard turned off. The previous version stays in `/mnt/app/eso/mib2-patcher.old` until the next update.
 **Status of all patches** says when the card has a newer patcher or patch.
+
+## Choosing patches
+
+`mib2-patcher/config.txt` on the card picks the patches `update` copies to the unit, with one `<PATCH>=on` or `<PATCH>=off` line each.
+A patch that is off isn't copied, doesn't show in the GEM and isn't installed by **Install all patches**.
+A patch the file doesn't list is off. Without the file every patch is copied.
+
+For example, only JOKERBTN:
+
+```text
+JOKERBTN=on
+MENUSCREEN=off
+NAVIGNORE=off
+TEL2ACP=off
+TOUCHCURSOR=off
+```
+
+After changing it, run **Update from SD card** and reboot. A changed `config.txt` counts as an update, and patches that are now off are uninstalled.
 
 ## Logs
 
@@ -95,7 +114,7 @@ on -f rcc /net/mmx/mnt/app/eso/mib2-patcher/patcher.sh <command>
 | `update-force` | The same, also when nothing on the card is newer or something is older |
 | `train` | Show the train the patcher picked |
 | `status` | Show the train and the status of every patch |
-| `install` | Install every patch of the train |
+| `install` | Install every patch on the unit (the ones `config.txt` turns on) |
 | `uninstall` | Uninstall every patch and remove MIB2-Patcher from the unit |
 | `gem-on`, `gem-off` | Add or remove the MIB2_Patcher screen and the screens of every patch |
 | `logs` | Copy the logs to `mib2-patcher/logs` on the SD card |
@@ -149,6 +168,7 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
 | Path | Contents |
 |---|---|
 | `mib2-patcher/` | The folder that goes on the SD card: `patcher.sh`, the `command.sh` hook and the MIB2_Patcher GEM screen. `update` copies it to the unit |
+| `mib2-patcher/config.txt` | Picks the patches `update` copies to the unit |
 | `mib2-patcher/patches/<train>/` | `lsd.jxe.id` of the train, and one folder per patch with its jar, installer and GEM screens |
 | `source/<train>/<patch>/` | Java source of the patch (`src/`) and compile-only firmware stubs (`stubs/`) |
 | `docs/<patch>/` | README and firmware findings of each patch |
