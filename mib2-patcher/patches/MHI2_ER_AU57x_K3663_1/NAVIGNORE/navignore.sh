@@ -68,6 +68,8 @@ MARKER="#NAVIGNORE"
 PERSIST="/net/mmx/mnt/persist"
 FLAG_PENDING="$PERSIST/navignore_pending"
 FLAG_DISABLED="$PERSIST/navignore_disabled"
+# Left by a start that didn't finish, a second one in a row disables the patch
+FLAG_FAILED="$PERSIST/navignore_failed"
 
 # Firmware id (see jxe_id) of MHI2_ER_AU57x_K3663_1 (MU1425), the firmware the patch was built from
 SUPPORTED_JXE_ID="0b0340deda476160cd63d54ca2e36f316d08c068"
@@ -203,7 +205,7 @@ check_persist() {
 }
 
 clear_flags() {
-	rm -f "$FLAG_PENDING" "$FLAG_DISABLED" 2> /dev/null
+	rm -f "$FLAG_PENDING" "$FLAG_DISABLED" "$FLAG_FAILED" 2> /dev/null
 }
 
 # The block added in front of the J9 start line in lsd.sh. It runs on the MMX
@@ -211,7 +213,8 @@ clear_flags() {
 # it can't report a good start itself. Like MENUSCREEN, the block leaves a
 # pending flag and removes it after a minute in the background. A flag still
 # there on the next start means the HMI or the unit restarted within that
-# minute, so the patch is disabled.
+# minute. The patch is disabled after two such starts in a row, so one start
+# cut short by switching the car off doesn't count.
 # If another mod already set -Xbootclasspath/p:, the jar joins that list so
 # J9 only ever gets one /p: option.
 patch_block() {
@@ -220,11 +223,16 @@ patch_block() {
 	out "NAVIGNORE_JAR=/eso/hmi/lsd/jars/$JAR_NAME $m"
 	out "NAVIGNORE_FLAG=/mnt/persist/navignore $m"
 	out 'if [ -f $NAVIGNORE_JAR ] && [ ! -f ${NAVIGNORE_FLAG}_disabled ]; then '"$m"
-	out '	if [ -f ${NAVIGNORE_FLAG}_pending ]; then '"$m"
+	out '	if [ ! -f ${NAVIGNORE_FLAG}_pending ]; then '"$m"
+	out '		rm -f ${NAVIGNORE_FLAG}_failed '"$m"
+	out '	elif [ -f ${NAVIGNORE_FLAG}_failed ]; then '"$m"
 	out '		( : > ${NAVIGNORE_FLAG}_disabled ) 2> /dev/null '"$m"
-	out '		rm -f ${NAVIGNORE_FLAG}_pending '"$m"
-	out '	elif ( : > ${NAVIGNORE_FLAG}_pending ) 2> /dev/null; then '"$m"
-	out '		( sleep 60; rm -f ${NAVIGNORE_FLAG}_pending ) > /dev/null 2>&1 & '"$m"
+	out '		rm -f ${NAVIGNORE_FLAG}_pending ${NAVIGNORE_FLAG}_failed '"$m"
+	out '	else '"$m"
+	out '		( : > ${NAVIGNORE_FLAG}_failed ) 2> /dev/null '"$m"
+	out '	fi '"$m"
+	out '	if [ ! -f ${NAVIGNORE_FLAG}_disabled ] && ( : > ${NAVIGNORE_FLAG}_pending ) 2> /dev/null; then '"$m"
+	out '		( sleep 60; rm -f ${NAVIGNORE_FLAG}_pending ${NAVIGNORE_FLAG}_failed ) > /dev/null 2>&1 & '"$m"
 	out '		case "$BOOTCLASSPATH" in '"$m"
 	out '			*-Xbootclasspath/p:*) BOOTCLASSPATH="${BOOTCLASSPATH%%-Xbootclasspath/p:*}-Xbootclasspath/p:$NAVIGNORE_JAR:${BOOTCLASSPATH#*-Xbootclasspath/p:}" ;; '"$m"
 	out '			*) BOOTCLASSPATH="$BOOTCLASSPATH -Xbootclasspath/p:$NAVIGNORE_JAR" ;; '"$m"
@@ -360,7 +368,9 @@ do_status() {
 		log "jar:        installed but different from the SD card copy, run install again"
 	fi
 	if [ -f "$FLAG_DISABLED" ]; then
-		log "boot guard: DISABLED the patch after a failed start, run install to re-arm"
+		log "boot guard: DISABLED the patch after two failed starts in a row, run install to re-arm"
+	elif [ -f "$FLAG_FAILED" ] && [ -f "$FLAG_PENDING" ]; then
+		log "boot guard: the last start didn't finish, the patch turns off if this one doesn't either"
 	elif [ -f "$FLAG_PENDING" ]; then
 		log "boot guard: started less than a minute ago, or the last start failed"
 	else

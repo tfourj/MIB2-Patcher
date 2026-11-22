@@ -82,6 +82,8 @@ PERSIST="/net/mmx/mnt/persist"
 FLAG_PENDING="$PERSIST/tel2acp_pending"
 FLAG_LOADED="$PERSIST/tel2acp_loaded"
 FLAG_DISABLED="$PERSIST/tel2acp_disabled"
+# Left by a start that didn't finish, a second one in a row disables the patch
+FLAG_FAILED="$PERSIST/tel2acp_failed"
 
 # TEL mode (tel, carplay or custom; phone is the 1.1.0 name of custom) and the
 # CarPlay Custom screen. The patched class reads both at every TEL press
@@ -222,7 +224,7 @@ check_persist() {
 }
 
 clear_flags() {
-	rm -f "$FLAG_PENDING" "$FLAG_LOADED" "$FLAG_DISABLED" 2> /dev/null
+	rm -f "$FLAG_PENDING" "$FLAG_LOADED" "$FLAG_DISABLED" "$FLAG_FAILED" 2> /dev/null
 }
 
 current_mode() {
@@ -299,7 +301,8 @@ clear_keys() {
 # The block added in front of the J9 start line in lsd.sh. It runs on the MMX
 # at every HMI start. It loads the jar only after leaving a pending flag; the
 # patched class deletes that flag once it has loaded. A flag still there on
-# the next start means that start failed, so the patch is disabled.
+# the next start means that start failed. The patch is disabled after two
+# failed starts in a row, so one start cut short by switching off doesn't count.
 # If another mod already set -Xbootclasspath/p:, the jar joins that list so
 # J9 only ever gets one /p: option (this is how TEL2ACP and JOKERBTN coexist).
 patch_block() {
@@ -309,10 +312,15 @@ patch_block() {
 	out "TEL2ACP_FLAG=/mnt/persist/tel2acp $m"
 	out 'if [ -f $TEL2ACP_JAR ] && [ ! -f ${TEL2ACP_FLAG}_disabled ]; then '"$m"
 	out '	rm -f ${TEL2ACP_FLAG}_loaded '"$m"
-	out '	if [ -f ${TEL2ACP_FLAG}_pending ]; then '"$m"
+	out '	if [ ! -f ${TEL2ACP_FLAG}_pending ]; then '"$m"
+	out '		rm -f ${TEL2ACP_FLAG}_failed '"$m"
+	out '	elif [ -f ${TEL2ACP_FLAG}_failed ]; then '"$m"
 	out '		( : > ${TEL2ACP_FLAG}_disabled ) 2> /dev/null '"$m"
-	out '		rm -f ${TEL2ACP_FLAG}_pending '"$m"
-	out '	elif ( : > ${TEL2ACP_FLAG}_pending ) 2> /dev/null; then '"$m"
+	out '		rm -f ${TEL2ACP_FLAG}_pending ${TEL2ACP_FLAG}_failed '"$m"
+	out '	else '"$m"
+	out '		( : > ${TEL2ACP_FLAG}_failed ) 2> /dev/null '"$m"
+	out '	fi '"$m"
+	out '	if [ ! -f ${TEL2ACP_FLAG}_disabled ] && ( : > ${TEL2ACP_FLAG}_pending ) 2> /dev/null; then '"$m"
 	out '		case "$BOOTCLASSPATH" in '"$m"
 	out '			*-Xbootclasspath/p:*) BOOTCLASSPATH="${BOOTCLASSPATH%%-Xbootclasspath/p:*}-Xbootclasspath/p:$TEL2ACP_JAR:${BOOTCLASSPATH#*-Xbootclasspath/p:}" ;; '"$m"
 	out '			*) BOOTCLASSPATH="$BOOTCLASSPATH -Xbootclasspath/p:$TEL2ACP_JAR" ;; '"$m"
@@ -516,7 +524,9 @@ do_status() {
 		log "jar:        installed but different from the SD card copy, run install again"
 	fi
 	if [ -f "$FLAG_DISABLED" ]; then
-		log "boot guard: DISABLED the patch after a failed start, run install to re-arm"
+		log "boot guard: DISABLED the patch after two failed starts in a row, run install to re-arm"
+	elif [ -f "$FLAG_FAILED" ] && [ -f "$FLAG_PENDING" ]; then
+		log "boot guard: the last start didn't finish, the patch turns off if this one doesn't either"
 	elif [ -f "$FLAG_LOADED" ]; then
 		log "boot guard: patch loaded on the last start"
 	elif [ -f "$FLAG_PENDING" ]; then

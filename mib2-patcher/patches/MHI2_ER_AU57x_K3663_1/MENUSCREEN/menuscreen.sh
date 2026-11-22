@@ -71,6 +71,8 @@ MARKER="#MENUSCREEN"
 PERSIST="/net/mmx/mnt/persist"
 FLAG_PENDING="$PERSIST/menuscreen_pending"
 FLAG_DISABLED="$PERSIST/menuscreen_disabled"
+# Left by a start that didn't finish, a second one in a row disables the patch
+FLAG_FAILED="$PERSIST/menuscreen_failed"
 
 # Settings, read by the patched classes every few seconds
 CONFIG="$PERSIST/menuscreen.conf"
@@ -212,7 +214,7 @@ check_persist() {
 }
 
 clear_flags() {
-	rm -f "$FLAG_PENDING" "$FLAG_DISABLED" 2> /dev/null
+	rm -f "$FLAG_PENDING" "$FLAG_DISABLED" "$FLAG_FAILED" 2> /dev/null
 }
 
 # The block added in front of the J9 start line in lsd.sh. It runs on the MMX
@@ -220,7 +222,8 @@ clear_flags() {
 # opens, so they can't report a good start themselves. Instead the block
 # leaves a pending flag and removes it after a minute in the background. A
 # flag still there on the next start means the HMI or the unit restarted
-# within that minute, so the patch is disabled.
+# within that minute. The patch is disabled after two such starts in a row,
+# so one start cut short by switching the car off doesn't count.
 # If another mod already set -Xbootclasspath/p:, the jar joins that list so
 # J9 only ever gets one /p: option (this is how it coexists with TEL2ACP and JOKERBTN).
 patch_block() {
@@ -229,11 +232,16 @@ patch_block() {
 	out "MENUSCREEN_JAR=/eso/hmi/lsd/jars/$JAR_NAME $m"
 	out "MENUSCREEN_FLAG=/mnt/persist/menuscreen $m"
 	out 'if [ -f $MENUSCREEN_JAR ] && [ ! -f ${MENUSCREEN_FLAG}_disabled ]; then '"$m"
-	out '	if [ -f ${MENUSCREEN_FLAG}_pending ]; then '"$m"
+	out '	if [ ! -f ${MENUSCREEN_FLAG}_pending ]; then '"$m"
+	out '		rm -f ${MENUSCREEN_FLAG}_failed '"$m"
+	out '	elif [ -f ${MENUSCREEN_FLAG}_failed ]; then '"$m"
 	out '		( : > ${MENUSCREEN_FLAG}_disabled ) 2> /dev/null '"$m"
-	out '		rm -f ${MENUSCREEN_FLAG}_pending '"$m"
-	out '	elif ( : > ${MENUSCREEN_FLAG}_pending ) 2> /dev/null; then '"$m"
-	out '		( sleep 60; rm -f ${MENUSCREEN_FLAG}_pending ) > /dev/null 2>&1 & '"$m"
+	out '		rm -f ${MENUSCREEN_FLAG}_pending ${MENUSCREEN_FLAG}_failed '"$m"
+	out '	else '"$m"
+	out '		( : > ${MENUSCREEN_FLAG}_failed ) 2> /dev/null '"$m"
+	out '	fi '"$m"
+	out '	if [ ! -f ${MENUSCREEN_FLAG}_disabled ] && ( : > ${MENUSCREEN_FLAG}_pending ) 2> /dev/null; then '"$m"
+	out '		( sleep 60; rm -f ${MENUSCREEN_FLAG}_pending ${MENUSCREEN_FLAG}_failed ) > /dev/null 2>&1 & '"$m"
 	out '		case "$BOOTCLASSPATH" in '"$m"
 	out '			*-Xbootclasspath/p:*) BOOTCLASSPATH="${BOOTCLASSPATH%%-Xbootclasspath/p:*}-Xbootclasspath/p:$MENUSCREEN_JAR:${BOOTCLASSPATH#*-Xbootclasspath/p:}" ;; '"$m"
 	out '			*) BOOTCLASSPATH="$BOOTCLASSPATH -Xbootclasspath/p:$MENUSCREEN_JAR" ;; '"$m"
@@ -437,7 +445,9 @@ do_status() {
 		log "jar:        installed but different from the SD card copy, run install again"
 	fi
 	if [ -f "$FLAG_DISABLED" ]; then
-		log "boot guard: DISABLED the patch after a failed start, run install to re-arm"
+		log "boot guard: DISABLED the patch after two failed starts in a row, run install to re-arm"
+	elif [ -f "$FLAG_FAILED" ] && [ -f "$FLAG_PENDING" ]; then
+		log "boot guard: the last start didn't finish, the patch turns off if this one doesn't either"
 	elif [ -f "$FLAG_PENDING" ]; then
 		log "boot guard: started less than a minute ago, or the last start failed"
 	else
