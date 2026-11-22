@@ -14,7 +14,7 @@ Outside CarPlay the touchpad works as stock.
 > [!WARNING]
 > **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > If something is wrong, the MMI screen software may not start (black screen, no GEM).
-> A [boot guard](#safeguards) turns the patch off by itself after one failed start. SSH is still the best way to undo things. Use at your own risk.
+> A [boot guard](#safeguards) turns the patch off by itself after two failed starts in a row. SSH is still the best way to undo things. Use at your own risk.
 
 ## Requirements
 
@@ -57,7 +57,7 @@ Install also removes the TOUCHDIAG diagnostic from [FINDINGS.md](FINDINGS.md) if
 
 - The installer checks the firmware fingerprint and the jar's checksum before it changes anything, and backs up `lsd.sh` on first install.
 - **Boot guard.** Like NAVIGNORE, the `lsd.sh` block leaves a `touchcursor_pending` flag in `/mnt/persist` at every HMI start and removes it after a minute.
-  If the flag is still there at the next start, the HMI restarted within that minute, so the block writes `touchcursor_disabled` and starts the HMI without the jar.
+  If the flag is still there at the next start, the HMI restarted within that minute. After two such starts in a row, the block writes `touchcursor_disabled` and starts the HMI without the jar.
   **Install** re-arms it. **Status** shows the guard's state.
 - If drawing the cursor fails, the patch stops drawing it until the next HMI start, and taps still work. Errors go to `/mnt/persist/touchcursor.log`.
 

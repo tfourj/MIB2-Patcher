@@ -24,7 +24,7 @@ To see roughly how it will look before installing, open [preview/menuscreen-prev
 > [!WARNING]
 > **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > It replaces the class that draws the tiles of the MENU and CAR menus. If something is wrong, those menus may not open.
-> GEM still opens and can uninstall it. A [boot guard](#safeguards) turns the patch off if the MMI restarts within a minute of starting. Have SSH ready. Use at your own risk.
+> GEM still opens and can uninstall it. A [boot guard](#safeguards) turns the patch off if the MMI restarts within a minute of starting, twice in a row. Have SSH ready. Use at your own risk.
 
 ## Requirements
 
@@ -112,9 +112,9 @@ Or use **Uninstall** in the GEM screen, or add a line `MENUSCREEN uninstall` to 
 
 **Boot guard.** The patched classes only load when MENU or CAR opens, so they can't report a good start themselves.
 Every time the MMI screen software starts, the `lsd.sh` block leaves a flag in `/mnt/persist` and removes it after a minute.
-If the flag is still there at the next start, the screen software or the unit restarted within that minute, so the block starts the stock software without the patch.
-`status` then shows `DISABLED the patch after a failed start`. Running `install` again re-arms it.
-Turning the car off within a minute of starting also counts as a failed start.
+If the flag is still there at the next start, the screen software or the unit restarted within that minute. After two such starts in a row, the block starts the stock software without the patch.
+`status` then shows `DISABLED the patch after two failed starts in a row`. Running `install` again re-arms it.
+Turning the car off within a minute of starting also counts as a failed start, but one on its own doesn't turn the patch off.
 
 **When the tile is pressed**, the patch's code catches its own errors. The press then does nothing and the error goes to the patch log.
 It never falls back to the reused tile's own action, so the Breakdown call slot can't start a breakdown call.

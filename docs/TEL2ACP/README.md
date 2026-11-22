@@ -13,7 +13,7 @@ All other buttons work as before. The TEL light only follows CarPlay when TEL op
 > [!WARNING]
 > **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > If something is wrong, the MMI screen software may not start (black screen, no GEM).
-> A [boot guard](#safeguards) turns the patch off by itself after one failed start. SSH is still the best way to undo things. Use at your own risk.
+> A [boot guard](#safeguards) turns the patch off by itself after two failed starts in a row. SSH is still the best way to undo things. Use at your own risk.
 
 ## Requirements
 
@@ -134,12 +134,13 @@ If any check fails, it stops and leaves the unit as it was.
 
 **Boot guard.** Every time the MMI screen software starts, the `lsd.sh` block first leaves a flag in `/mnt/persist`, then loads the patch.
 The patched class deletes the flag once it has loaded.
-If the flag is still there at the next start, that start failed, so the block starts the stock software without the patch and remembers that.
+If the flag is still there at the next start, that start failed. After two failed starts in a row, the block starts the stock software without the patch and remembers that.
+One failed start on its own, like switching the car off right after it started, doesn't turn the patch off.
 
 **If the screen stays black after installing:**
 
-1. Lock the car and leave it until the MMI shuts down, or restart the MMI. The next start runs without the patch.
-2. Check `status` (GEM screen, SSH or `mod/command.sh`). It shows `DISABLED the patch after a failed start`.
+1. Restart the MMI twice, or lock the car and let the MMI shut down twice. The start after two failed ones runs without the patch.
+2. Check `status` (GEM screen, SSH or `mod/command.sh`). It shows `DISABLED the patch after two failed starts in a row`.
 3. Run `uninstall`. Copy the logs to the SD card and keep them, they show what happened.
 
 The boot guard only covers starting up. If the screen software ever crashed when you *press* TEL, it would come back with the patch still on.
@@ -157,7 +158,7 @@ See [Setting up SSH](../../README.md#setting-up-ssh) in the main README.
   When the guard allows it, the block adds the jar to J9's `-Xbootclasspath/p:` list, which loads the patched class ahead of the firmware's own copy in `lsd.jxe`.
   M.I.B.'s NavActiveIgnore patch works the same way.
   If another mod (like the JOKERBTN patch) already uses `-Xbootclasspath/p:`, TEL2ACP joins that list instead of adding a second option, so both work.
-- Uses three small flag files in `/mnt/persist` (`tel2acp_pending`, `tel2acp_loaded`, `tel2acp_disabled`).
+- Uses four small flag files in `/mnt/persist` (`tel2acp_pending`, `tel2acp_loaded`, `tel2acp_failed`, `tel2acp_disabled`).
   The TEL mode is stored in `/mnt/persist/tel2acp_mode` (no file means TEL / CarPlay),
   CarPlay Custom in `/mnt/persist/tel2acp_custom` (no file means Phone),
   the CarPlay keys in `/mnt/persist/tel2acp_key_nav`, `tel2acp_key_radio` and `tel2acp_key_media` (no file means off).

@@ -10,7 +10,7 @@ Keeps the **MMI navigation** running on an Audi MHI2 when **Apple CarPlay** star
 > [!WARNING]
 > **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [FINDINGS.md](FINDINGS.md)).
 > If something is wrong, the MMI screen software may not start (black screen, no GEM).
-> A [boot guard](#safeguards) turns the patch off by itself after one failed start. SSH is still the best way to undo things. Use at your own risk.
+> A [boot guard](#safeguards) turns the patch off by itself after two failed starts in a row. SSH is still the best way to undo things. Use at your own risk.
 
 ## Requirements
 
@@ -52,7 +52,7 @@ Keeps the **MMI navigation** running on an Audi MHI2 when **Apple CarPlay** star
 - The installer checks the firmware fingerprint and the jar's checksum before it changes anything, and backs up `lsd.sh` on first install.
 - **Boot guard.** The patched class only loads when CarPlay connects, so the `lsd.sh` block can't wait for it.
   Like MENUSCREEN, it leaves a `navignore_pending` flag in `/mnt/persist` at every HMI start and removes it after a minute.
-  If the flag is still there at the next start, the HMI restarted within that minute, so the block writes `navignore_disabled` and starts the HMI without the jar.
+  If the flag is still there at the next start, the HMI restarted within that minute. After two such starts in a row, the block writes `navignore_disabled` and starts the HMI without the jar.
   **Install** re-arms it. **Status** shows the guard's state.
 
 ## What the installer changes

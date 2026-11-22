@@ -19,7 +19,7 @@ Patches are sorted by firmware train, and the patcher only offers the ones built
 
 > [!WARNING]
 > The patches were built by reverse engineering one unit's firmware. If something is wrong, the MMI screen software may not start (black screen, no GEM).
-> Each patch has a boot guard that turns it off by itself after a failed start. SSH is still the best way to undo things. Use at your own risk.
+> Each patch has a boot guard that turns it off by itself after two failed starts in a row. SSH is still the best way to undo things. Use at your own risk.
 
 ## Requirements
 
